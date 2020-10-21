@@ -1,0 +1,12 @@
+diff -Naur rodinia_3.1/openmp/pathfinder/Makefile rodinia_3.1-patched/openmp/pathfinder/Makefile
+--- rodinia_3.1/openmp/pathfinder/Makefile	2015-12-11 07:46:20.000000000 -0800
++++ rodinia_3.1-patched/openmp/pathfinder/Makefile	2020-02-04 12:55:46.000000000 -0800
+@@ -1,7 +1,7 @@
+ CC = g++
+ SRC = pathfinder.cpp
+ EXE = pathfinder
+-FLAGS = -fopenmp
++FLAGS = -fopenmp -O3
+ 
+ release:
+ 	$(CC) $(SRC) $(FLAGS) -o $(EXE)

@@ -1,0 +1,87 @@
+diff -Naur rodinia_3.1/openmp/kmeans/kmeans_openmp/cluster.c rodinia_3.1-patched/openmp/kmeans/kmeans_openmp/cluster.c
+--- rodinia_3.1/openmp/kmeans/kmeans_openmp/cluster.c	2015-12-11 07:46:28.000000000 -0800
++++ rodinia_3.1-patched/openmp/kmeans/kmeans_openmp/cluster.c	2020-02-04 12:55:46.000000000 -0800
+@@ -69,7 +69,9 @@
+ #include <limits.h>
+ #include <math.h>
+ #include <float.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "kmeans.h"
+ 
+diff -Naur rodinia_3.1/openmp/kmeans/kmeans_openmp/kmeans.c rodinia_3.1-patched/openmp/kmeans/kmeans_openmp/kmeans.c
+--- rodinia_3.1/openmp/kmeans/kmeans_openmp/kmeans.c	2015-12-11 07:46:28.000000000 -0800
++++ rodinia_3.1-patched/openmp/kmeans/kmeans_openmp/kmeans.c	2020-02-04 12:55:46.000000000 -0800
+@@ -75,7 +75,10 @@
+ #include <math.h>
+ #include <sys/types.h>
+ #include <fcntl.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
++#include <sys/time.h>
+ #include "getopt.h"
+ 
+ #include "kmeans.h"
+@@ -204,7 +207,13 @@
+ 
+ 	memcpy(attributes[0], buf, numObjects*numAttributes*sizeof(float));
+ 
++#ifdef _OPENMP
+ 	timing = omp_get_wtime();
++#else
++        struct timeval tv;
++        gettimeofday(&tv, NULL);
++        timing = tv.tv_sec + tv.tv_usec/1e6;
++#endif
+     for (i=0; i<nloops; i++) {
+         
+         cluster_centres = NULL;
+@@ -217,7 +226,14 @@
+                );
+      
+     }
++#ifdef _OPENMP
+     timing = omp_get_wtime() - timing;
++#else
++    struct timeval end_tv;
++    gettimeofday(&end_tv, NULL);
++    double end_time = end_tv.tv_sec + end_tv.tv_usec/1e6;
++    timing = end_time - timing;
++#endif
+ 	
+ 
+ 	printf("number of Clusters %d\n",nclusters); 
+diff -Naur rodinia_3.1/openmp/kmeans/kmeans_openmp/kmeans_clustering.c rodinia_3.1-patched/openmp/kmeans/kmeans_openmp/kmeans_clustering.c
+--- rodinia_3.1/openmp/kmeans/kmeans_openmp/kmeans_clustering.c	2015-12-11 07:46:28.000000000 -0800
++++ rodinia_3.1-patched/openmp/kmeans/kmeans_openmp/kmeans_clustering.c	2020-02-04 12:55:46.000000000 -0800
+@@ -64,7 +64,9 @@
+ #include <float.h>
+ #include <math.h>
+ #include "kmeans.h"
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #define RANDOM_MAX 2147483647
+ 
+@@ -179,11 +181,17 @@
+ 	printf("num of threads = %d\n", num_omp_threads);
+     do {
+         delta = 0.0;
++#ifdef _OPENMP
+ 		omp_set_num_threads(num_omp_threads);
++#endif
+ 		#pragma omp parallel \
+                 shared(feature,clusters,membership,partial_new_centers,partial_new_centers_len)
+         {
++#ifdef _OPENMP
+             int tid = omp_get_thread_num();				
++#else
++            int tid = 0;
++#endif
+             #pragma omp for \
+                         private(i,j,index) \
+                         firstprivate(npoints,nclusters,nfeatures) \

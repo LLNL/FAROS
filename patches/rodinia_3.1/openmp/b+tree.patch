@@ -1,0 +1,53 @@
+diff -Naur rodinia_3.1/openmp/b+tree/kernel/kernel_cpu.c rodinia_3.1-patched/openmp/b+tree/kernel/kernel_cpu.c
+--- rodinia_3.1/openmp/b+tree/kernel/kernel_cpu.c	2015-12-11 07:46:26.000000000 -0800
++++ rodinia_3.1-patched/openmp/b+tree/kernel/kernel_cpu.c	2020-06-09 13:10:59.000000000 -0700
+@@ -10,7 +10,9 @@
+ //	LIBRARIES
+ //======================================================================================================================================================150
+ 
++#ifdef _OPENMP
+ #include <omp.h>									// (in directory known to compiler)			needed by openmp
++#endif
+ #include <stdlib.h>									// (in directory known to compiler)			needed by malloc
+ #include <stdio.h>									// (in directory known to compiler)			needed by printf, stderr
+ 
+@@ -62,10 +64,12 @@
+ 	//	MCPU SETUP
+ 	//======================================================================================================================================================150
+ 
++#ifdef _OPENMP
+ 	int max_nthreads;
+ 	max_nthreads = omp_get_max_threads();
+ 	// printf("max # of threads = %d\n", max_nthreads);
+ 	omp_set_num_threads(cores_arg);
++#endif
+ 	// printf("set # of threads = %d\n", cores_arg);
+ 
+ 	int threadsPerBlock;
+diff -Naur rodinia_3.1/openmp/b+tree/kernel/kernel_cpu_2.c rodinia_3.1-patched/openmp/b+tree/kernel/kernel_cpu_2.c
+--- rodinia_3.1/openmp/b+tree/kernel/kernel_cpu_2.c	2015-12-11 07:46:26.000000000 -0800
++++ rodinia_3.1-patched/openmp/b+tree/kernel/kernel_cpu_2.c	2020-06-09 13:11:11.000000000 -0700
+@@ -10,7 +10,9 @@
+ //	LIBRARIES
+ //======================================================================================================================================================150
+ 
++#ifdef _OPENMP
+ #include <omp.h>									// (in directory known to compiler)
++#endif
+ #include <stdlib.h>									// (in directory known to compiler)
+ 
+ //======================================================================================================================================================150
+@@ -73,11 +75,13 @@
+ 	//	MCPU SETUP
+ 	//======================================================================================================================================================150
+ 
++#ifdef _OPENMP
+ 	int max_nthreads;
+ 	max_nthreads = omp_get_max_threads();
+ 	// printf("max # of threads = %d\n", max_nthreads);
+ 	omp_set_num_threads(cores_arg);
+ 	// printf("set # of threads = %d\n", cores_arg);
++#endif
+ 
+ 	int threadsPerBlock;
+ 	threadsPerBlock = order < 1024 ? order : 1024;

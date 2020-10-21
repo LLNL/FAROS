@@ -1,0 +1,45 @@
+diff -Naur rodinia_3.1/openmp/bfs/bfs.cpp rodinia_3.1-patched/openmp/bfs/bfs.cpp
+--- rodinia_3.1/openmp/bfs/bfs.cpp	2020-06-10 12:30:30.000000000 -0700
++++ rodinia_3.1-patched/openmp/bfs/bfs.cpp	2020-06-09 13:36:29.000000000 -0700
+@@ -2,9 +2,11 @@
+ #include <string.h>
+ #include <math.h>
+ #include <stdlib.h>
++#ifdef OPEN
+ #include <omp.h>
++#endif
++#include <sys/time.h>
+ //#define NUM_THREAD 4
+-#define OPEN
+ 
+ 
+ FILE *fp;
+@@ -120,6 +122,10 @@
+ #pragma omp target data map(to: no_of_nodes, h_graph_mask[0:no_of_nodes], h_graph_nodes[0:no_of_nodes], h_graph_edges[0:edge_list_size], h_graph_visited[0:no_of_nodes], h_updating_graph_mask[0:no_of_nodes]) map(h_cost[0:no_of_nodes])
+         {
+ #endif 
++#else
++	struct timeval start_tv;
++	gettimeofday(&start_tv, NULL);
++	double start_time = start_tv.tv_sec + start_tv.tv_usec/1e6;
+ #endif
+ 	bool stop;
+ 	do
+@@ -170,11 +176,16 @@
+ 	while(stop);
+ #ifdef OPEN
+         double end_time = omp_get_wtime();
+-        printf("Compute time: %lf\n", (end_time - start_time));
+ #ifdef OMP_OFFLOAD
+         }
+ #endif
++#else
++	struct timeval end_tv;
++	gettimeofday(&end_tv, NULL);
++	double end_time = end_tv.tv_sec + end_tv.tv_usec/1e6;
++
+ #endif
++        printf("Compute time: %lf\n", (end_time - start_time));
+ 	//Store the result into a file
+ 	FILE *fpo = fopen("result.txt","w");
+ 	for(int i=0;i<no_of_nodes;i++)

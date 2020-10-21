@@ -1,0 +1,23 @@
+diff -Naur rodinia_3.1/openmp/lavaMD/kernel/kernel_cpu.c rodinia_3.1-patched/openmp/lavaMD/kernel/kernel_cpu.c
+--- rodinia_3.1/openmp/lavaMD/kernel/kernel_cpu.c	2020-06-09 19:26:43.000000000 -0700
++++ rodinia_3.1-patched/openmp/lavaMD/kernel/kernel_cpu.c	2020-06-09 16:58:09.000000000 -0700
+@@ -10,7 +10,9 @@
+ //	LIBRARIES
+ //======================================================================================================================================================150
+ 
++#ifdef _OPENMP
+ #include <omp.h>									// (in path known to compiler)			needed by openmp
++#endif
+ #include <stdlib.h>									// (in path known to compiler)			needed by malloc
+ #include <stdio.h>									// (in path known to compiler)			needed by printf
+ #include <math.h>									// (in path known to compiler)			needed by exp
+@@ -92,7 +94,9 @@
+ 	//	MCPU SETUP
+ 	//======================================================================================================================================================150
+ 
++#ifdef _OPENMP
+ 	omp_set_num_threads(dim.cores_arg);
++#endif
+ 
+ 	time2 = get_time();
+ 

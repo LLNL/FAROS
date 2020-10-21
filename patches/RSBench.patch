@@ -1,0 +1,47 @@
+diff --git a/openmp-threading/io.c b/openmp-threading/io.c
+index dc5201f..a179d97 100644
+--- a/openmp-threading/io.c
++++ b/openmp-threading/io.c
+@@ -68,7 +68,11 @@ Input read_CLI( int argc, char * argv[] )
+ 	// defaults to the history based simulation method
+ 	input.simulation_method = HISTORY_BASED;
+ 	// defaults to max threads on the system	
++#ifdef OPENMP
+ 	input.nthreads = omp_get_num_procs();
++#else
++	input.nthreads = 1;
++#endif
+ 	// defaults to 355 (corresponding to H-M Large benchmark)
+ 	input.n_nuclides = 355;
+ 	// defaults to 300,000
+diff --git a/openmp-threading/main.c b/openmp-threading/main.c
+index 76f0202..2540433 100644
+--- a/openmp-threading/main.c
++++ b/openmp-threading/main.c
+@@ -13,7 +13,9 @@ int main(int argc, char * argv[])
+ 	Input input = read_CLI( argc, argv );
+ 
+ 	// Set number of OpenMP Threads
++#ifdef OPENMP
+ 	omp_set_num_threads(input.nthreads); 
++#endif
+ 	
+ 	// =====================================================================
+ 	// Print-out of Input Summary
+diff --git a/openmp-threading/rsbench.h b/openmp-threading/rsbench.h
+index 280b0c3..6dc2581 100644
+--- a/openmp-threading/rsbench.h
++++ b/openmp-threading/rsbench.h
+@@ -5,9 +5,11 @@
+ #include<string.h>
+ #include<stdint.h>
+ #include<float.h>
++#ifdef _OPENMP
+ #include<omp.h>
+-
+ #define OPENMP
++#endif
++
+ 
+ #define PI 3.14159265359
+ 

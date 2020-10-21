@@ -1,0 +1,15 @@
+diff -Naur rodinia_3.1/openmp/hotspot3D/3D.c rodinia_3.1-patched/openmp/hotspot3D/3D.c
+--- rodinia_3.1/openmp/hotspot3D/3D.c	2020-06-10 12:38:42.000000000 -0700
++++ rodinia_3.1-patched/openmp/hotspot3D/3D.c	2020-02-04 12:55:46.000000000 -0800
+@@ -154,7 +154,11 @@
+         float *tOut_t = tOut;
+ 
+ #pragma omp master
++#ifdef _OPENMP
+         printf("%d threads running\n", omp_get_num_threads());
++#else
++        printf("%d threads running (compiled w/o OpenMP)\n", 1);
++#endif
+ 
+         do {
+             int z; 

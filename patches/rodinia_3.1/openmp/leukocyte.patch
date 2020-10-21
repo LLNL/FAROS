@@ -1,0 +1,213 @@
+diff -Naur rodinia_3.1/openmp/leukocyte/OpenMP/Makefile rodinia_3.1-patched/openmp/leukocyte/OpenMP/Makefile
+--- rodinia_3.1/openmp/leukocyte/OpenMP/Makefile	2020-06-10 11:46:54.000000000 -0700
++++ rodinia_3.1-patched/openmp/leukocyte/OpenMP/Makefile	2020-02-04 12:55:46.000000000 -0800
+@@ -14,7 +14,7 @@
+ leukocyte: detect_main.o avilib.o find_ellipse.o track_ellipse.o misc_math.o $(MATRIX_DIR)/meschach.a
+ 	$(CC) $(CC_FLAGS) -lm avilib.o find_ellipse.o track_ellipse.o misc_math.o detect_main.o -o leukocyte -lm $(MATRIX_DIR)/meschach.a -lpthread
+ 
+-%.o: %.[ch]
++%.o: %.c
+ 	$(CC) $(OUTPUT) $(CC_FLAGS) $< -c
+ 
+ detect_main.o: find_ellipse.h track_ellipse.h avilib.h
+@@ -25,4 +25,4 @@
+ 	cd $(MATRIX_DIR); ./configure --with-all; make all; make clean
+ 
+ clean:
+-	rm -f *.o leukocyte
++	rm -f *.o leukocyte $(MATRIX_DIR)/meschach.a
+diff -Naur rodinia_3.1/openmp/leukocyte/OpenMP/find_ellipse.h rodinia_3.1-patched/openmp/leukocyte/OpenMP/find_ellipse.h
+--- rodinia_3.1/openmp/leukocyte/OpenMP/find_ellipse.h	2020-06-10 11:46:54.000000000 -0700
++++ rodinia_3.1-patched/openmp/leukocyte/OpenMP/find_ellipse.h	2020-06-09 17:00:46.000000000 -0700
+@@ -6,11 +6,13 @@
+ #include "misc_math.h"
+ #include <math.h>
+ #include <stdlib.h>
++#ifdef OPEN
+ #include <omp.h>
++#endif
+ 
+ // Number of threads for OpenMP to use
+ // (Only defined if we want to parallelize using OpenMP)
+-#define OPEN 
++//#define OPEN 
+ 
+ // Defines the region in the video frame containing the blood vessel
+ #define TOP 110
+diff -Naur rodinia_3.1/openmp/leukocyte/meschach_lib/confdefs.h rodinia_3.1-patched/openmp/leukocyte/meschach_lib/confdefs.h
+--- rodinia_3.1/openmp/leukocyte/meschach_lib/confdefs.h	2020-06-10 11:46:54.000000000 -0700
++++ rodinia_3.1-patched/openmp/leukocyte/meschach_lib/confdefs.h	2020-02-04 12:55:46.000000000 -0800
+@@ -1 +1,12 @@
+ 
++#define HAVE_MEMORY_H 1
++#define STDC_HEADERS 1
++#define HAVE_COMPLEX_H 1
++#define NOT_SEGMENTED 1
++#define U_INT_DEF 1
++#define D_MACHEPS 
++#define F_MACHEPS 
++#define M_MAX_INT 
++#define CHAR0ISDBL0 1
++#define HAVE_BCOPY 1
++#define HAVE_BZERO 1
+diff -Naur rodinia_3.1/openmp/leukocyte/meschach_lib/config.log rodinia_3.1-patched/openmp/leukocyte/meschach_lib/config.log
+--- rodinia_3.1/openmp/leukocyte/meschach_lib/config.log	2020-06-10 11:46:54.000000000 -0700
++++ rodinia_3.1-patched/openmp/leukocyte/meschach_lib/config.log	2020-02-04 12:55:46.000000000 -0800
+@@ -4,4 +4,126 @@
+ configure:575: checking for acc
+ configure:605: checking for cc
+ configure:635: checking for gcc
+-configure:665: checking for cc
++configure:748: checking whether the C compiler (clang  ) works
++configure:764: clang -o conftest    conftest.c  1>&5
++configure:761:1: warning: type specifier missing, defaults to 'int' [-Wimplicit-int]
++main(){return(0);}
++^
++1 warning generated.
++configure:790: checking whether the C compiler (clang  ) is a cross-compiler
++configure:795: checking whether we are using GNU C
++configure:804: clang -E conftest.c
++configure:823: checking whether clang accepts -g
++configure:855: checking how to run the C preprocessor
++configure:876: clang -E  conftest.c >/dev/null 2>conftest.out
++configure:935: checking for AIX
++configure:961: checking for minix/config.h
++configure:971: clang -E  conftest.c >/dev/null 2>conftest.out
++configure:967:10: fatal error: 'minix/config.h' file not found
++#include <minix/config.h>
++         ^~~~~~~~~~~~~~~~
++1 error generated.
++configure: failed program was:
++#line 966 "configure"
++#include "confdefs.h"
++#include <minix/config.h>
++configure:1009: checking for POSIXized ISC
++configure:1032: checking for ranlib
++configure:1063: checking for memory.h
++configure:1073: clang -E  conftest.c >/dev/null 2>conftest.out
++configure:1100: checking for ANSI C header files
++configure:1113: clang -E  conftest.c >/dev/null 2>conftest.out
++configure:1180: clang -o conftest -g -O2   conftest.c  1>&5
++configure:1175:67: warning: implicitly declaring library function 'exit' with type 'void (int) __attribute__((noreturn))' [-Wimplicit-function-declaration]
++if (XOR (islower (i), ISLOWER (i)) || toupper (i) != TOUPPER (i)) exit(2);
++                                                                  ^
++configure:1175:67: note: include the header <stdlib.h> or explicitly provide a declaration for 'exit'
++1 warning generated.
++configure:1205: checking for complex.h
++configure:1215: clang -E  conftest.c >/dev/null 2>conftest.out
++configure:1241: checking for malloc.h
++configure:1251: clang -E  conftest.c >/dev/null 2>conftest.out
++configure:1247:10: fatal error: 'malloc.h' file not found
++#include <malloc.h>
++         ^~~~~~~~~~
++1 error generated.
++configure: failed program was:
++#line 1246 "configure"
++#include "confdefs.h"
++#include <malloc.h>
++configure:1277: checking for varargs.h
++configure:1287: clang -E  conftest.c >/dev/null 2>conftest.out
++In file included from configure:1283:
++/Users/georgakoudis1/opt/llvm-project-release/lib/clang/10.0.0/include/varargs.h:11:4: error: "Please use <stdarg.h> instead of <varargs.h>"
++  #error "Please use <stdarg.h> instead of <varargs.h>"
++   ^
++1 error generated.
++configure: failed program was:
++#line 1282 "configure"
++#include "confdefs.h"
++#include <varargs.h>
++configure:1316: checking for size_t
++configure:1349: checking for working const
++configure:1403: clang -c -g -O2  conftest.c 1>&5
++configure:1424: checking whether byte ordering is bigendian
++configure:1442: clang -c -g -O2  conftest.c 1>&5
++configure:1457: clang -c -g -O2  conftest.c 1>&5
++configure:1452:2: error: use of undeclared identifier 'not'
++ not big endian
++ ^
++1 error generated.
++configure: failed program was:
++#line 1446 "configure"
++#include "confdefs.h"
++#include <sys/types.h>
++#include <sys/param.h>
++int main() {
++
++#if BYTE_ORDER != BIG_ENDIAN
++ not big endian
++#endif
++; return 0; }
++configure:1579: clang -c -g -O2  conftest.c 1>&5
++configure:1570:1: error: unknown type name 'u_int'
++u_int
++^
++In file included from configure:1572:
++/usr/include/stdio.h:264:54: error: function definition is not allowed here
++__header_always_inline int __sputc(int _c, FILE *_p) {
++                                                     ^
++In file included from configure:1574:
++In file included from /usr/include/stdlib.h:66:
++In file included from /usr/include/sys/wait.h:186:
++In file included from /usr/include/machine/endian.h:35:
++In file included from /usr/include/i386/endian.h:99:
++In file included from /usr/include/sys/_endian.h:130:
++In file included from /usr/include/libkern/_OSByteOrder.h:66:
++/usr/include/libkern/i386/_OSByteOrder.h:49:1: error: function definition is not allowed here
++{
++^
++/usr/include/libkern/i386/_OSByteOrder.h:58:1: error: function definition is not allowed here
++{
++^
++/usr/include/libkern/i386/_OSByteOrder.h:73:1: error: function definition is not allowed here
++{
++^
++5 errors generated.
++configure: failed program was:
++#line 1569 "configure"
++#include "confdefs.h"
++u_int
++int main() {
++#include <stdio.h>
++#ifdef __STDC__
++#include <stdlib.h>
++#endif
++; return 0; }
++configure:1636: checking for bcopy
++configure:1664: clang -o conftest -g -O2   conftest.c  -lm 1>&5
++configure:1636: checking for bzero
++configure:1664: clang -o conftest -g -O2   conftest.c  -lm 1>&5
++configure:1648:6: warning: incompatible redeclaration of library function 'bzero' [-Wincompatible-library-redeclaration]
++char bzero();
++     ^
++configure:1648:6: note: 'bzero' is a builtin with type 'void (void *, unsigned long)'
++1 warning generated.
+diff -Naur rodinia_3.1/openmp/leukocyte/meschach_lib/configure rodinia_3.1-patched/openmp/leukocyte/meschach_lib/configure
+--- rodinia_3.1/openmp/leukocyte/meschach_lib/configure	2020-06-10 11:46:54.000000000 -0700
++++ rodinia_3.1-patched/openmp/leukocyte/meschach_lib/configure	2020-06-10 11:53:57.000000000 -0700
+@@ -1264,7 +1264,7 @@
+ if eval "test \"`echo '$ac_cv_header_'$ac_safe`\" = yes"; then
+   echo "$ac_t""yes" 1>&6
+   cat >> confdefs.h <<\EOF
+-#define HAVE_MALLOC_H 1
++#define HAVE_MALLOC_H 0
+ EOF
+ 
+ else
+diff -Naur rodinia_3.1/openmp/leukocyte/meschach_lib/machine.h rodinia_3.1-patched/openmp/leukocyte/meschach_lib/machine.h
+--- rodinia_3.1/openmp/leukocyte/meschach_lib/machine.h	2020-06-10 11:46:54.000000000 -0700
++++ rodinia_3.1-patched/openmp/leukocyte/meschach_lib/machine.h	2020-06-10 11:55:09.000000000 -0700
+@@ -39,10 +39,10 @@
+ #endif
+ 
+ /* if the system has malloc.h */
+-#ifdef HAVE_MALLOC_H
+-#define	MALLOCDECL	1
+-#include	<malloc.h>
+-#endif
++//#ifdef HAVE_MALLOC_H
++//#define	MALLOCDECL	1
++//#include	<malloc.h>
++//#endif
+ 
+ /* any compiler should have this header */
+ /* if not, change it */

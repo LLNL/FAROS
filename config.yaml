@@ -1,0 +1,840 @@
+LULESH:
+    fetch: 'git clone -q https://github.com/LLNL/LULESH.git'
+    tags: ['proxy']
+    build_dir: 'LULESH'
+    build: { 
+        seq: [ 'make -j CXX=clang++ CXXFLAGS="-g -O3 -march=native -I. -Wall -DUSE_MPI=0
+            -fsave-optimization-record -save-stats" LDFLAGS="-g -O3 -march=native"' ],
+        omp: [ 'make -j CXX=clang++ 
+            CXXFLAGS="-g -fopenmp -O3 -march=native -I. -Wall -DUSE_MPI=0 -fsave-optimization-record -save-stats"
+            LDFLAGS="-g -O3 -march=native -fopenmp"' ],
+        }
+    copy: [ 'lulesh2.0' ]
+    bin: 'lulesh2.0'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./lulesh2.0'
+    input: '-i 500'
+    measure : 'Grind time.* (\d+\.\d+) .*overall'
+    clean : [ 'git reset --hard; git clean -fx' ]
+
+Quicksilver:
+    fetch: 'git clone -q https://github.com/LLNL/Quicksilver'
+    tags: ['proxy']
+    build_dir: 'Quicksilver'
+    build: { 
+        seq: [ 'cd src; make -j CXX=clang++ CXXFLAGS="-g -O3 -march=native -I. -Wall
+            -fsave-optimization-record -save-stats" LDFLAGS="-g -O3 -march=native"' ],
+        omp: [ 'cd src; make -j CXX=clang++ 
+            CXXFLAGS="-g -fopenmp -O3 -march=native -I. -Wall
+            -DHAVE_OPENMP -fsave-optimization-record -save-stats"
+            LDFLAGS="-g -O3 -march=native -fopenmp"' ],
+        }
+    copy: [ 'src/qs' ]
+    bin: 'qs'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./qs'
+    input: '--nSteps 1'
+    measure :
+    clean : [ 'git reset --hard; git clean -fx' ]
+
+Kripke:
+    fetch: 'git clone -q https://github.com/LLNL/Kripke.git; cd Kripke; git submodule update --init --recursive'
+    tags: ['proxy']
+    build_dir: 'Kripke'
+    build: { 
+    seq: [ 'mkdir -p build; cd build; cmake -DCMAKE_C_COMPILER=clang
+        -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++ 
+        -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -fsave-optimization-record -save-stats" -DENABLE_MPI=false -DENABLE_OPENMP=false ..; make -j' ],
+    omp: [ 'mkdir -p build; cd build; cmake -DCMAKE_C_COMPILER=clang
+        -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++
+        -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -fsave-optimization-record -save-stats"
+        -DENABLE_MPI=false -DENABLE_OPENMP=true
+        ..; make -j' ],
+    }
+    copy: [ 'build/bin/kripke.exe' ]
+    bin: 'kripke.exe'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./kripke.exe'
+    input: ''
+    measure :
+    clean: [ 'git reset --hard; git clean -fx' ]
+
+AMG:
+    fetch: 'git clone -q https://github.com/LLNL/AMG.git'
+    tags: ['proxy']
+    build_dir: 'AMG'
+    build: { 
+        seq: [ 'printf "OMPI_CC=clang\nMPICH_CC=clang\nCC=mpicc\nINCLUDE_CFLAGS = -O2 -march=native
+            -DHYPRE_HOPSCOTCH -DHYPRE_BIGINT
+            -fsave-optimization-record -save-stats\nINCLUDE_LFLAGS = -lm\n" >
+            Makefile.include;make -j' ],
+        omp: [ 'printf "OMPI_CC=clang\nMPICH_CC=clang\nCC=mpicc\nINCLUDE_CFLAGS = -O2 -march=native -fopenmp
+            -DHYPRE_USING_OPENMP -DHYPRE_HOPSCOTCH -DHYPRE_BIGINT
+            -fsave-optimization-record -save-stats 
+            \nINCLUDE_LFLAGS = -lm
+            -fopenmp" >
+            Makefile.include;make -j' ],
+        }
+    copy: [ 'test/amg' ]
+    bin: 'amg'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true mpirun -np 1 ./amg'
+    input: '-problem 1 -n 128 128 128'
+    measure :
+    clean : [ 'git reset --hard; git clean -fx' ]
+
+miniAMR:
+    fetch: 'git clone -q https://github.com/Mantevo/miniAMR &&
+            cd miniAMR &&
+            git apply ../../patches/miniAMR.patch'
+    tags: ['proxy']
+    build_dir: 'miniAMR'
+    build: {
+        seq: ['cd openmp; make -j CC="OMPI_CC=clang MPICH_CC=clang mpicc" LD="OMPI_CC=clang MPICH_CC=clang mpicc"
+            CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats" LDLIBS=-lm'],
+        omp: ['cd openmp; make -j CC="OMPI_CC=clang MPICH_CC=clang mpicc" LD="OMPI_CC=clang MPICH_CC=clang mpicc"
+            CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+            LDLIBS="-lm -fopenmp"'],
+        }
+    copy: ['openmp/ma.x']
+    bin: 'ma.x'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true mpirun -np 1 ./ma.x'
+    input: '--num_refine 4 --max_blocks 6000 --init_x 1 --init_y 1 --init_z 1
+        --npx 1 --npy 1 --npz 1 --nx 8 --ny 8 --nz 8 --num_objects 1 --object 2
+        0 -0.01 -0.01 -0.01 0.0 0.0 0.0 0.0 0.0 0.0 0.0009 0.0009 0.0009
+        --num_tsteps 100 --comm_vars 2'
+    #input: '--num_refine 4 --max_blocks 9000 --npx 1 --npy 1 --npz 1 --nx 8
+    #--ny 8 --nz 8 --num_objects 1 --object 2 0 -1.71 -1.71 -1.71 0.04 0.04
+    #0.04 1.7 1.7 1.7 0.0 0.0 0.0 --num_tsteps 1 --checksum_freq 1'
+    measure: 'Summary.*time (\d+\.\d+).*'
+    clean: [ 'git clean -fx' ]
+
+XSBench:
+    fetch: 'git clone https://github.com/ANL-CESAR/XSBench.git'
+    tags: ['proxy']
+    build_dir: 'XSBench'
+    build: {
+        seq: ['cd openmp-threading; make -j CC="clang" OPENMP=no CFLAGS="-std=gnu99 -Wall -O3 -march=native 
+        -fsave-optimization-record -save-stats"' ],
+        omp: ['cd openmp-threading; make -j CC="clang" OPENMP=yes 
+        CFLAGS="-fopenmp -std=gnu99 -Wall -O3 -march=native -fsave-optimization-record -save-stats"' ],
+    }
+    copy: [ 'openmp-threading/XSBench' ]
+    bin: 'XSBench'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./XSBench'
+    input: '-t 1 -k 1 -s small'
+    measure:
+    clean: [ 'git clean -fx' ]
+
+RSBench:
+    fetch: 'git clone https://github.com/ANL-CESAR/RSBench.git;
+            cd RSBench;git apply ../../patches/RSBench.patch'
+    tags: ['proxy']
+    build_dir: 'RSBench'
+    build: {
+        seq: ['cd openmp-threading; make -j CC="clang" 
+               CFLAGS="-std=gnu99 -Wall -O3 -march=native -fsave-optimization-record -save-stats"
+               LDFLAGS="-lm"
+               ' ],
+        omp: ['cd openmp-threading; make -j CC="clang"
+        CFLAGS="-fopenmp -std=gnu99 -Wall -O3 -march=native -fsave-optimization-record -save-stats"
+        LDFLAGS="-lm"' ],
+    }
+    copy: [ 'openmp-threading/rsbench' ]
+    bin: 'rsbench'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./rsbench'
+    input: '-t 1 -s small'
+    measure:
+    clean: [ 'git clean -fx' ]
+
+SimpleMOC:
+    fetch: 'git clone https://github.com/ANL-CESAR/SimpleMOC.git'
+    tags: ['proxy']
+    build_dir: 'SimpleMOC'
+    build: {
+        seq: ['cd src; make -j CC="clang" OPENMP=no 
+        CFLAGS="-std=gnu99 -Ofast -ffast-math -ftree-vectorize -msse2 -fsave-optimization-record -save-stats"
+        LDFLAGS="-lm"
+        ' ],
+        omp: ['cd src; make -j CC="clang" OPENMP=yes 
+        CFLAGS="-std=gnu99 -Ofast -ffast-math -ftree-vectorize -msse2 -fopenmp -DOPENMP -fsave-optimization-record -save-stats"
+        LDFLAGS="-lm"' ],
+    }
+    copy: [ 'src/SimpleMOC' ]
+    bin: 'SimpleMOC'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./SimpleMOC'
+    input: '-s -t 1'
+    measure: ''
+    clean: [ 'git clean -fx' ]
+
+miniFE:
+    fetch: 'git clone https://github.com/Mantevo/miniFE.git'
+    tags: ['proxy']
+    build_dir: 'miniFE'
+    build: {
+        seq: [ 'cd openmp-opt/src; 
+        make -j CC=clang CXX=clang++ CFLAGS="-O3 -march=native -mavx -fsave-optimization-record -save-stats"
+        CPPFLAGS="-I. -I../utils -I../fem -DMINIFE_SCALAR=double
+        -DMINIFE_LOCAL_ORDINAL=int -DMINIFE_GLOBAL_ORDINAL=int
+        -DMINIFE_CSR_MATRIX -DMINIFE_RESTRICT=__restrict__
+        -DMPICH_IGNORE_CXX_SEEK -DMINIFE_INFO=1 -DMINIFE_KERNELS=0"'
+        ],
+        omp: [ 'cd openmp-opt/src; 
+        make -j CC=clang CXX=clang++ 
+        CFLAGS="-O3 -march=native -mavx -fsave-optimization-record -save-stats"
+        CPPFLAGS="-I. -I../utils -I../fem -DMINIFE_SCALAR=double
+        -DMINIFE_LOCAL_ORDINAL=int -DMINIFE_GLOBAL_ORDINAL=int
+        -DMINIFE_CSR_MATRIX -DMINIFE_RESTRICT=__restrict__
+        -DMPICH_IGNORE_CXX_SEEK -DMINIFE_INFO=1 -DMINIFE_KERNELS=0"'
+        ],
+    }
+    copy: [ 'openmp-opt/src/miniFE.x' ]
+    bin: 'miniFE.x'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./miniFE.x'
+    input: '-nx 64'
+    measure: ''
+    clean: [ 'git clean -fx' ]
+
+CoMD:
+    fetch: 'git clone https://github.com/ECP-copa/CoMD.git;
+            cd CoMD; git apply ../../patches/CoMD.patch'
+    tags: ['proxy']
+    build_dir: 'CoMD'
+    build: {
+        seq: [ 'cd src-openmp; cp Makefile.vanilla Makefile; 
+                make -j CC=clang CFLAGS="-std=c99 -DDOUBLE -O3 -march=native -fsave-optimization-record -save-stats" DO_MPI=no' ],
+        omp: [ 'cd src-openmp; cp Makefile.vanilla Makefile;
+                make -j CC=clang 
+                CFLAGS="-fopenmp -std=c99 -DDOUBLE -O3 -march=native -fsave-optimization-record -save-stats"
+                DO_MPI=no
+                LDFLAGS="-lm"'
+        ],
+    }
+    copy: [ 'bin/CoMD-openmp',  './pots' ]
+    bin: 'CoMD-openmp'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./CoMD-openmp'
+    input: '-e -i 1 -j 1 -k 1 -x 20 -y 20 -z 20'
+    measure: ''
+    clean: [ 'git clean -fx' ]
+
+hpcg:
+    fetch: 'git clone https://github.com/hpcg-benchmark/hpcg.git;
+            cd hpcg; git apply ../../patches/hpcg.patch'
+    tags: ['proxy']
+    build_dir: 'hpcg'
+    build: {
+        seq: [ 'mkdir -p build; cd build; ../configure CLANG_SEQ; make -j' ],
+        omp: [ 'mkdir -p build; cd build; ../configure CLANG_OMP; make -j' ],
+    }
+    copy: [ 'build/bin/xhpcg' ]
+    bin: 'xhpcg'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./xhpcg'
+    input: '128 128 128'
+    measure: 'execution time \(sec\) is=(\d+\.\d+)'
+    clean: [ 'rm -rf build' ]
+
+    #miniAero:
+    #    fetch: 'git clone https://github.com/Mantevo/miniAero.git; cd miniAero/kokkos;
+    #            git clone https://github.com/kokkos/kokkos.git'
+    #    tags: ['proxy']
+    #    build_dir: 'miniAero'
+    #    build: {
+    #        seq: [ 'cd kokkos; make -j KOKKOS_PATH=./kokkos KOKKOS_ARCH=BDW KOKKOS_DEVICES=Serial CXX=clang++
+    #                CXXFLAGS="-O3 -march=native -g -DATOMICS_FLUX -fsave-optimization-record -save-stats" 
+    #                LINKFLAGS="-lm -Wl,-rpath,$(TMP=$(which g++); echo ${TMP%/bin/g++}/lib64)"
+    #        '],
+    #        omp: [ 'cd kokkos; make -j KOKKOS_PATH=./kokkos KOKKOS_ARCH=BDW KOKKOS_DEVICES=OpenMP CXX=clang++
+    #                CXXFLAGS="-O3 -march=native -g -DATOMICS_FLUX -fsave-optimization-record -save-stats"
+    #                LINKFLAGS="-lm -Wl,-rpath,$(TMP=$(which g++); echo ${TMP%/bin/g++}/lib64)"
+    #        '],
+    #    }
+    #    copy: [ 'kokkos/miniAero.host', 'kokkos/tests/Ramp_Serial/miniaero.inp' ]
+    #    bin: 'miniAero.host'
+    #    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./miniAero.host'
+    #    input: ''
+    #    measure: 'Device Run time:[" "]+(\d+\.\d+) seconds'
+    #    clean: [ 'git clean -fx' ]
+
+BT:
+    fetch: 'git clone https://github.com/benchmark-subsetting/NPB3.0-omp-C.git BT;
+            cd BT; mkdir -p bin; cd config; cp make.def.template make.def'
+    tags: ['nas']
+    build_dir: 'BT'
+    build: {
+        seq: [ 'make BT CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-lm"
+                ' ],
+        omp: [ 'make BT CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/bt.A' ]
+    bin: 'bt.A'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./bt.A'
+    input: ''
+    measure: 'Time in seconds =[" "]+(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+CG:
+    fetch: 'git clone https://github.com/benchmark-subsetting/NPB3.0-omp-C.git CG;
+            cd CG; mkdir -p bin; cd config; cp make.def.template make.def'
+    tags: ['nas']
+    build_dir: 'CG'
+    build: {
+        seq: [ 'make CG CLASS=B CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-lm"
+                ' ],
+        omp: [ 'make CG CLASS=B CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/cg.B' ]
+    bin: 'cg.B'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./cg.B'
+    input: ''
+    measure: 'Time in seconds =[" "]+(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+EP:
+    fetch: 'git clone https://github.com/benchmark-subsetting/NPB3.0-omp-C.git EP;
+            cd EP; mkdir -p bin; cd config; cp make.def.template make.def'
+    tags: ['nas']
+    build_dir: 'EP'
+    build: {
+        seq: [ 'make EP CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+            CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats"
+            CLINKFLAGS="-lm"
+            ' ],
+        omp: [ 'make EP CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/ep.A' ]
+    bin: 'ep.A'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./ep.A'
+    input: ''
+    measure: 'Time in seconds =[" "]+(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+FT:
+    fetch: 'git clone https://github.com/benchmark-subsetting/NPB3.0-omp-C.git FT;
+            cd FT; mkdir -p bin; cd config; cp make.def.template make.def'
+    tags: ['nas']
+    build_dir: 'FT'
+    build: {
+        seq: [ 'make FT CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-lm"
+                ' ],
+        omp: [ 'make FT CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/ft.A' ]
+    bin: 'ft.A'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./ft.A'
+    input: ''
+    measure: 'Time in seconds =[" "]+(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+IS:
+    fetch: 'git clone https://github.com/benchmark-subsetting/NPB3.0-omp-C.git IS;
+            cd IS; git apply ../../patches/IS.patch;
+            mkdir -p bin; cd config; cp make.def.template make.def'
+    tags: ['nas']
+    build_dir: 'IS'
+    build: {
+        seq: [ 'make IS CLASS=B CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-lm"
+                ' ],
+        omp: [ 'make IS CLASS=B CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/is.B' ]
+    bin: 'is.B'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./is.B'
+    input: ''
+    measure: 'Time in seconds =[" "]+(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+LU:
+    fetch: 'git clone https://github.com/benchmark-subsetting/NPB3.0-omp-C.git LU;
+            cd LU; mkdir -p bin; cd config; cp make.def.template make.def'
+    tags: ['nas']
+    build_dir: 'LU'
+    build: {
+        seq: [ 'make LU CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-lm"
+                ' ],
+        omp: [ 'make LU CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/lu.A' ]
+    bin: 'lu.A'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./lu.A'
+    input: ''
+    measure: 'Time in seconds =[" "]+(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+MG:
+    fetch: 'git clone https://github.com/benchmark-subsetting/NPB3.0-omp-C.git MG;
+            cd MG; mkdir -p bin; cd config; cp make.def.template make.def'
+    tags: ['nas']
+    build_dir: 'MG'
+    build: {
+        seq: [ 'make MG CLASS=B CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-lm"
+                ' ],
+        omp: [ 'make MG CLASS=B CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/mg.B' ]
+    bin: 'mg.B'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./mg.B'
+    input: ''
+    measure: 'Time in seconds =[" "]+(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+SP:
+    fetch: 'git clone https://github.com/benchmark-subsetting/NPB3.0-omp-C.git SP;
+            cd SP; mkdir -p bin; cd config; cp make.def.template make.def'
+    tags: ['nas']
+    build_dir: 'SP'
+    build: {
+        seq: [ 'make SP CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-lm"
+                ' ],
+        omp: [ 'make SP CLASS=A CC="clang" UCC="clang" CLINK="clang" 
+                CFLAGS="-O3 -march=native -fopenmp -fsave-optimization-record -save-stats"
+                CLINKFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/sp.A' ]
+    bin: 'sp.A'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./sp.A'
+    input: ''
+    measure: 'Time in seconds =[" "]+(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+CoSP2:
+    fetch: 'git clone https://github.com/exmatex/CoSP2.git; cd CoSP2; 
+    git apply ../../patches/CoSP2.patch;
+    cd src-mpi;
+    cp Makefile.vanilla Makefile'
+    tags: ['nas']
+    build_dir: 'CoSP2'
+    build: {
+        seq: [ 'cd src-mpi; make -j CC=clang 
+                CFLAGS="-std=c99 -DPOS1 -DCONTIG_MATRIX -DDOUBLE -O3 -march=native -fsave-optimization-record -save-stats"' ],
+        omp: [ 'cd src-mpi; make -j CC=clang 
+                CFLAGS="-std=c99 -fopenmp -DPOS1 -DCONTIG_MATRIX -DDOUBLE -O3 -march=native -fsave-optimization-record -save-stats"
+                LDFLAGS="-fopenmp -lm"'
+        ],
+    }
+    copy: [ 'bin/CoSP2-parallel', 'data/hmatrix.1024.mtx' ]
+    bin: 'CoSP2-parallel'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./CoSP2-parallel'
+    input: '--hmatName hmatrix.1024.mtx --N 12288 --M 256'
+    measure: ''
+    clean: [ 'cd src-mpi; make -j clean' ]
+
+b+tree:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/b+tree.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/b+tree'
+    build: {
+        seq: [ 'make -j C_C="clang -fsave-optimization-record -save-stats" OMP_LIB="" OMP_FLAG=""' ],
+        omp: [ 'make -j C_C="clang -fsave-optimization-record -save-stats" 
+                OMP_LIB="-fopenmp"
+                OMP_FLAG="-fopenmp"' ],
+    }
+    copy: [ 'b+tree.out', '../../data/b+tree/mil.txt', '../../data/b+tree/command.txt' ]
+    bin: 'b+tree.out'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./b+tree.out'
+    input: 'cores 1 file mil.txt command command.txt'
+    measure: ''
+    clean: [ 'make -j clean' ]
+
+backprop:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+             cd rodinia_3.1 &&  patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/backprop.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/backprop'
+    build: {
+        seq: [ 'make -j CC="clang" CC_FLAGS="-g -O2 -march=native -fsave-optimization-record -save-stats"' ],
+        omp: [ 'make -j CC="clang" 
+                CC_FLAGS="-fopenmp -DOPEN -DNUM_THREAD=1 -g -O2 -march=native -fsave-optimization-record -save-stats"' 
+        ],
+    }
+
+    copy: [ 'backprop' ]
+    bin: 'backprop'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./backprop'
+    input: '16777216'
+    measure: ''
+    clean: [ 'make -j clean' ]
+
+bfs:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r - -p1 < ../../patches/rodinia_3.1/openmp/bfs.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/bfs'
+    build: {
+        seq: [ 'make -j CC="clang" CC_FLAGS="-g -O2 -march=native -fsave-optimization-record -save-stats" bfs' ],
+        omp: [ 'make -j CC="clang" 
+                CC_FLAGS="-fopenmp -DOPEN -g -O2 -march=native -fsave-optimization-record -save-stats" bfs' 
+        ],
+    }
+
+    copy: [ 'bfs', '../../data/bfs/graph1MW_6.txt'  ]
+    bin: 'bfs'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./bfs'
+    input: '1 graph1MW_6.txt'
+    measure: 'Compute time: (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+cfd:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/cfd.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/cfd'
+    build: {
+        seq: [ 'make -j CXX="clang++" 
+                CXX_FLAGS="-g -O3 -march=native -Dblock_length=1 -fsave-optimization-record -save-stats" euler3d_cpu' ],
+        omp: [ 'make -j CXX="clang++" 
+                CXX_FLAGS="-fopenmp -g -O3 -march=native -Dblock_length=1 -fsave-optimization-record -save-stats" euler3d_cpu' 
+        ],
+    }
+
+    copy: [ 'euler3d_cpu', '../../data/cfd/fvcorr.domn.097K' ]
+    bin: 'euler3d_cpu'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./euler3d_cpu'
+    input: 'fvcorr.domn.097K'
+    measure: 'Compute time: (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+heartwall:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/heartwall.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/heartwall'
+    build: {
+        seq: [ 'make -j CC="clang"
+                CFLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats"' ],
+        omp: [ 'make -j CC="clang"
+                CFLAGS="-fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats"' 
+        ],
+    }
+
+    copy: [ 'heartwall', '../../data/heartwall/test.avi' ]
+    bin: 'heartwall'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./heartwall'
+    input: 'test.avi 20 1'
+    measure: ''
+    clean: [ 'make -j clean' ]
+
+hotspot:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/hotspot.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/hotspot'
+    build: {
+        seq: [ 'make -j CC="clang++"
+                CC_FLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats" hotspot' ],
+        omp: [ 'make -j CC="clang++"
+                CC_FLAGS="-fopenmp -DOPEN -g -O3 -march=native -fsave-optimization-record -save-stats" hotspot' 
+        ],
+    }
+
+    copy: [ 'hotspot', '../../data/hotspot/temp_1024', '../../data/hotspot/power_1024' ]
+    bin: 'hotspot'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./hotspot'
+    input: '1024 1024 1000 1 temp_1024 power_1024 output.out'
+    measure: 'Total time: (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+hotspot3D:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/hotspot3D.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/hotspot3D'
+    build: {
+        seq: [ 'make -j CC="clang"
+                CCFLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats"' ],
+        omp: [ 'make -j CC="clang"
+                CCFLAGS="-fopenmp -DOPEN -g -O3 -march=native -fsave-optimization-record -save-stats"' 
+        ],
+    }
+
+    copy: [ '3D', '../../data/hotspot3D/power_512x8', '../../data/hotspot3D/temp_512x8' ]
+    bin: '3D'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./3D'
+    input: '512 8 1000 power_512x8 temp_512x8 output.out'
+    measure: 'Time: (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+kmeans:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/kmeans.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/kmeans/kmeans_openmp'
+    build: {
+        seq: [ 'make -j CC="clang"
+                CC_FLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats"' ],
+        omp: [ 'make -j CC="clang"
+                CC_FLAGS="-fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats"' 
+        ],
+    }
+
+    copy: [ 'kmeans', '../../../data/kmeans/kdd_cup' ]
+    bin: 'kmeans'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./kmeans'
+    input: '-n 1 -i kdd_cup'
+    measure: 'Time for process: (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+lavaMD:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/lavaMD.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/lavaMD'
+    build: {
+        seq: [ 'make -j C_C="clang -fsave-optimization-record -save-stats" OMP_LIB="" OMP_FLAG=""' ],
+        omp: [ 'make -j C_C="clang -fsave-optimization-record -save-stats" 
+                OMP_LIB="-fopenmp"
+                OMP_FLAG="-fopenmp"' ],
+    }
+    copy: [ 'lavaMD' ]
+    bin: 'lavaMD'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./lavaMD'
+    input: '-cores 1 -boxes1d 16'
+    measure: 'Total time:.*(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+
+leukocyte:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/leukocyte.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/leukocyte/OpenMP'
+    build: {
+        seq: [ 'make CC="clang"
+                CC_FLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats -I../meschach_lib"' ],
+        omp: [ 'make CC="clang"
+                CC_FLAGS="-DOPEN -fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats -I../meschach_lib"' 
+        ],
+    }
+    copy: [ 'leukocyte', '../../../data/leukocyte/testfile.avi' ]
+    bin: 'leukocyte'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./leukocyte'
+    input: '5 1 testfile.avi'
+    measure: 'Total application run time: (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+lud:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/lud.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/lud/omp'
+    build: {
+        seq: [ 'make -j CC="clang"
+                CFLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats"
+                LDFLAGS=""' ],
+        omp: [ 'make -j CC="clang"
+                CFLAGS="-fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats"
+                LDFLAGS="-fopenmp"
+                '],
+    }
+    copy: [ 'lud_omp' ]
+    bin: 'lud_omp'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./lud_omp'
+    input: '-n 1 -s 8000'
+    measure: 'Time consumed\(s\): (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+nn:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/nn.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/nn'
+    build: {
+        seq: [ 'make -j CC="clang"
+                CFLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats"
+                LDFLAGS="-lm"; echo -e "cane4_0.db\ncane4_1.db\ncane4_2.db\ncane4_3.db\n" > filelist;' ],
+        omp: [ 'make -j CC="clang"
+                CFLAGS="-fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats"
+                LDFLAGS="-lm -fopenmp";
+                printf "cane4_0.db\ncane4_1.db\ncane4_2.db\ncane4_3.db\n" > filelist;
+                '],
+    }
+    copy: [ 'nn', 'filelist',
+    '../../data/nn/cane4_0.db', '../../data/nn/cane4_1.db', '../../data/nn/cane4_2.db', '../../data/nn/cane4_3.db' ]
+    bin: 'nn'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./nn'
+    input: 'filelist 10000 30 90'
+    measure: 'total time : [" "]*(\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+nw:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/nw.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/nw'
+    build: {
+        seq: [ 'make -j CC="clang++" CC_FLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats" needle' ],
+        omp: [ 'make -j CC="clang++" 
+                CC_FLAGS="-fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats" needle' 
+        ],
+    }
+
+    copy: [ 'needle' ]
+    bin: 'needle'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./needle'
+    input: '32000 10 1'
+    measure: 'Total time: (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+particlefilter:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/particlefilter.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/particlefilter/'
+    build: {
+        seq: [ 'make -j CC="clang"
+                CFLAGS="-g -O3 -march=native -ffast-math -fsave-optimization-record -save-stats"
+                LDFLAGS="-lm"' ],
+        omp: [ 'make -j CC="clang"
+                CFLAGS="-fopenmp -g -O3 -march=native -ffast-math -fsave-optimization-record -save-stats"
+                LDFLAGS="-lm -fopenmp"
+                '],
+    }
+    copy: [ 'particle_filter' ]
+    bin: 'particle_filter'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./particle_filter'
+    input: '-x 128 -y 128 -z 10 -np 100000'
+    measure: 'ENTIRE PROGRAM TOOK (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+pathfinder:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/pathfinder.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/pathfinder/'
+    build: {
+        seq: [ 'make -j CC="clang++"
+                FLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats"' ],
+        omp: [ 'make -j CC="clang++"
+                FLAGS="-fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats -fopenmp"
+                '],
+    }
+    copy: [ 'pathfinder' ]
+    bin: 'pathfinder'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./pathfinder'
+    input: '1000000 100 > out'
+    measure: ''
+    clean: [ 'make -j clean' ]
+
+srad:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/srad.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/srad/srad_v2'
+    build: {
+        seq: [ 'make -j CC="clang++"
+                CC_FLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats"'],
+        omp: [ 'make -j CC="clang++"
+                CC_FLAGS="-DOPEN -fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats -fopenmp"
+                '],
+    }
+    copy: [ 'srad' ]
+    bin: 'srad'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./srad'
+    input: '2048 2048 0 127 0 127 1 0.5 100'
+    measure: ''
+    clean: [ 'make -j clean' ]
+
+streamcluster:
+    fetch: 'wget -nc http://www.cs.virginia.edu/~kw5na/lava/Rodinia/Packages/Current/rodinia_3.1.tar.bz2;
+            [ ! -d "./rodinia_3.1" ] && tar xfk rodinia_3.1.tar.bz2;
+            cd rodinia_3.1 && patch -N -r /dev/null -p1 < ../../patches/rodinia_3.1/openmp/streamcluster.patch'
+    tags: ['rodinia']
+    build_dir: 'rodinia_3.1/openmp/streamcluster'
+    build: {
+        seq: [ 'make -j CXX="clang++"
+                CXXFLAGS="-g -O3 -march=native -fsave-optimization-record -save-stats" omp'],
+        omp: [ 'make -j CXX="clang++"
+                CXXFLAGS="-DOPEN -fopenmp -g -O3 -march=native -fsave-optimization-record -save-stats -fopenmp"
+                omp '],
+    }
+    copy: [ 'sc_omp' ]
+    bin: 'sc_omp'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./sc_omp'
+    input: '10 20 256 65536 65536 1000 none output.txt 1'
+    measure: 'time = (\d+\.\d+)'
+    clean: [ 'make -j clean' ]
+
+gromacs-2019.5:
+    fetch: 'wget -nc http://ftp.gromacs.org/pub/gromacs/gromacs-2019.5.tar.gz; 
+            [ ! -d "./gromacs-2019.5" ] && 
+            tar xf gromacs-2019.5.tar.gz &&
+            cd gromacs-2019.5 &&
+            sed -i "s/set(EXTRA/#set(EXTRA/g" CMakeLists.txt;
+            mkdir -p testcases && 
+            cd testcases &&
+            wget https://repository.prace-ri.eu/ueabs/GROMACS/1.2/GROMACS_TestCaseA.tar.gz &&
+            tar xf GROMACS_TestCaseA.tar.gz'
+    tags: ['large']
+    build_dir: 'gromacs-2019.5'
+    build: {
+        seq: [ 'mkdir -p build; cd build; cmake -DCMAKE_C_COMPILER=clang
+                -DCMAKE_CXX_COMPILER=clang++ -DGMX_MPI=off -DGMX_OPENMP=off
+                -DCMAKE_C_FLAGS="-fsave-optimization-record -save-stats"
+                -DCMAKE_CXX_FLAGS="-fsave-optimization-record -save-stats"
+                -DCMAKE_EXE_LINKER_FLAGS="-lm" -DBUILD_SHARED_LIBS=off ..; 
+                make -j'
+            ],
+        omp: [ 'mkdir -p build; cd build; 
+            cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++  
+                -DEXTRA_C_FLAGS="-fopenmp -fsave-optimization-record -save-stats"
+                -DEXTRA_CXX_FLAGS="-fopenmp -fsave-optimization-record -save-stats"
+                -DGMX_MPI=off -DGMX_OPENMP=on
+                -DCMAKE_EXE_LINKER_FLAGS="-fopenmp -lm" 
+                -DBUILD_SHARED_LIBS=off ..;
+                make -j VERBOSE=1'
+            ],
+    }
+    copy: [ 'build/bin/gmx',  'testcases/ion_channel.tpr' ]
+    bin: 'gmx'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./gmx'
+    input: 'mdrun -ntmpi 1 -s ion_channel.tpr -maxh 0.50 -resethway -noconfout -nsteps 1000'
+    measure: 'Time: [" "]* \d+\.\d+ [" "]* (\d+\.\d+) [" "]* \d+\.\d+'
+    clean: [ 'rm -rf build' ]

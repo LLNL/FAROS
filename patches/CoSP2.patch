@@ -1,0 +1,42 @@
+diff --git a/src-mpi/CoSP2.c b/src-mpi/CoSP2.c
+index 291edd5..0b91987 100644
+--- a/src-mpi/CoSP2.c
++++ b/src-mpi/CoSP2.c
+@@ -43,7 +43,9 @@
+ #define MAIN_FILE
+ 
+ #include <stdio.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "decomposition.h"
+ #include "sparseMatrix.h"
+diff --git a/src-mpi/sparseMath.c b/src-mpi/sparseMath.c
+index 54f064c..9252f66 100644
+--- a/src-mpi/sparseMath.c
++++ b/src-mpi/sparseMath.c
+@@ -6,7 +6,9 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <math.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "sparseMatrix.h"
+ #include "parallel.h"
+diff --git a/src-mpi/sparseMatrix.c b/src-mpi/sparseMatrix.c
+index 3ff15ad..e8e154f 100644
+--- a/src-mpi/sparseMatrix.c
++++ b/src-mpi/sparseMatrix.c
+@@ -8,7 +8,9 @@
+ #include <string.h>
+ #include <math.h>
+ #include <assert.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "performance.h"
+ #include "parallel.h"

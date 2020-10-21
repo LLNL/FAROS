@@ -1,0 +1,40 @@
+diff --git a/openmp/profile.c b/openmp/profile.c
+index 2558f8c..81e492b 100644
+--- a/openmp/profile.c
++++ b/openmp/profile.c
+@@ -27,7 +27,9 @@
+ #include <stdio.h>
+ #include <math.h>
+ #include <mpi.h>
++#if _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "block.h"
+ #include "comm.h"
+@@ -44,7 +46,11 @@ void profile(void)
+    char *version = "1.4? w/OpenMP";
+    FILE *fp;
+ 
++#if _OPENMP
+    ompt = omp_get_max_threads();
++#else
++   ompt = 1;
++#endif
+    calculate_results();
+    total_fp_ops = average[128] + average[129] + average[130];
+    total_gflops = total_fp_ops/(average[38]*1024.0*1024.0*1024.0);
+diff --git a/openmp/stencil.c b/openmp/stencil.c
+index 7055bc3..f26628a 100644
+--- a/openmp/stencil.c
++++ b/openmp/stencil.c
+@@ -25,7 +25,9 @@
+ // ************************************************************************
+ 
+ #include <mpi.h>
++#if _OPENMP
+ #include <omp.h>
++#endif
+ #include <math.h>
+ 
+ #include <stdio.h>

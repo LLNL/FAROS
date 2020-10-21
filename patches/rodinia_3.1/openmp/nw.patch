@@ -1,0 +1,15 @@
+diff -Naur rodinia_3.1/openmp/nw/needle.cpp rodinia_3.1-patched/openmp/nw/needle.cpp
+--- rodinia_3.1/openmp/nw/needle.cpp	2015-12-11 12:42:29.000000000 -0800
++++ rodinia_3.1-patched/openmp/nw/needle.cpp	2020-06-09 12:03:31.000000000 -0700
+@@ -5,8 +5,10 @@
+ #include <string.h>
+ #include <math.h>
+ #include <sys/time.h>
++#ifdef OPENMP
+ #include <omp.h>
+-#define OPENMP
++#endif
++//#define OPENMP
+ //#define NUM_THREAD 4
+ 
+ #define BLOCK_SIZE 16

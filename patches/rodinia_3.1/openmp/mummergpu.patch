@@ -1,0 +1,33 @@
+diff -Naur rodinia_3.1/openmp/mummergpu/src/mummergpu_gold.cpp rodinia_3.1-patched/openmp/mummergpu/src/mummergpu_gold.cpp
+--- rodinia_3.1/openmp/mummergpu/src/mummergpu_gold.cpp	2015-12-11 07:46:21.000000000 -0800
++++ rodinia_3.1-patched/openmp/mummergpu/src/mummergpu_gold.cpp	2020-02-04 12:55:46.000000000 -0800
+@@ -328,7 +328,7 @@
+ 
+ 	        char c = GETQCHAR(qrystart + qry_match_len);
+ 
+-	        XPRINTF("In node ("fNID"): starting with %c [%d] =>  \n",
++	        XPRINTF("In node (" fNID "): starting with %c [%d] =>  \n",
+ 	                NID(cur), c, qry_match_len);
+ 
+ 	        unsigned int refpos = 0;
+@@ -351,7 +351,7 @@
+ 
+ 				//arrayToAddress(next, cur);
+ 
+-	            XPRINTF(" In node: ("fNID")\n", NID(cur));
++	            XPRINTF(" In node: (" fNID ")\n", NID(cur));
+ 
+ 	            // No edge to follow out of the node
+ 	            if (cur == 0) {
+diff -Naur rodinia_3.1/openmp/mummergpu/src/suffix-tree.cpp rodinia_3.1-patched/openmp/mummergpu/src/suffix-tree.cpp
+--- rodinia_3.1/openmp/mummergpu/src/suffix-tree.cpp	2015-12-11 07:46:21.000000000 -0800
++++ rodinia_3.1-patched/openmp/mummergpu/src/suffix-tree.cpp	2020-02-04 12:55:46.000000000 -0800
+@@ -15,6 +15,8 @@
+ #include <errno.h>
+ #include <assert.h>
+ 
++#include <unistd.h>
++
+ #define ulong4 uint32_t
+ #define uint4 uint32_t
+ #define int2 int32_t

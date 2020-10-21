@@ -1,0 +1,88 @@
+diff -Naur rodinia_3.1/openmp/cfd/euler3d_cpu.cpp rodinia_3.1-patched/openmp/cfd/euler3d_cpu.cpp
+--- rodinia_3.1/openmp/cfd/euler3d_cpu.cpp	2020-06-09 13:45:51.000000000 -0700
++++ rodinia_3.1-patched/openmp/cfd/euler3d_cpu.cpp	2020-06-09 13:37:53.000000000 -0700
+@@ -3,6 +3,7 @@
+ 
+ #include <iostream>
+ #include <fstream>
++#include <sys/time.h>
+ 
+ #ifdef OMP_OFFLOAD
+ #pragma omp declare target
+@@ -12,7 +13,9 @@
+ #pragma omp end declare target
+ #endif
+ 
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ struct float3 { float x, y, z; };
+ 
+@@ -473,6 +476,10 @@
+     #ifdef OMP_OFFLOAD
+         #pragma omp target map(alloc: old_variables[0:(nelr*NVAR)]) map(to: nelr, areas[0:nelr], step_factors[0:nelr], elements_surrounding_elements[0:(nelr*NNB)], normals[0:(NDIM*NNB*nelr)], fluxes[0:(nelr*NVAR)], ff_variable[0:NVAR], ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_contribution_density_energy) map(variables[0:(nelr*NVAR)])
+     #endif
++#else
++	struct timeval start_tv;
++	gettimeofday(&start_tv, NULL);
++	double start = start_tv.tv_sec + start_tv.tv_usec/1e6;
+ #endif
+ 	// Begin iterations
+ 	for(int i = 0; i < iterations; i++)
+@@ -491,8 +498,12 @@
+ 
+ #ifdef _OPENMP
+ 	double end = omp_get_wtime();
+-	std::cout  << "Compute time: " << (end-start) << std::endl;
++#else
++	struct timeval end_tv;
++	gettimeofday(&end_tv, NULL);
++	double end = end_tv.tv_sec + end_tv.tv_usec/1e6;
+ #endif
++	std::cout  << "Compute time: " << (end-start) << std::endl;
+ 
+ 
+ 	std::cout << "Saving solution..." << std::endl;
+diff -Naur rodinia_3.1/openmp/cfd/makefile rodinia_3.1-patched/openmp/cfd/makefile
+--- rodinia_3.1/openmp/cfd/makefile	2020-06-09 13:45:51.000000000 -0700
++++ rodinia_3.1-patched/openmp/cfd/makefile	2020-02-04 12:55:46.000000000 -0800
+@@ -3,6 +3,9 @@
+ OMP_NUM_THREADS = 8
+ MIC_OMP_NUM_THREADS = 216
+ 
++CXX=g++
++CXX_FLAGS=-O3 -Dblock_length=$(OMP_NUM_THREADS) -fopenmp
++
+ all: euler3d_cpu euler3d_cpu_double pre_euler3d_cpu pre_euler3d_cpu_double euler3d_cpu_offload
+ 
+ #euler3d: euler3d.cu
+@@ -12,13 +15,13 @@
+ #	nvcc -Xptxas -v -O3 --gpu-architecture=compute_13 --gpu-code=compute_13 euler3d_double.cu -o euler3d_double -I$(CUDA_SDK_PATH)/common/inc  -L$(CUDA_SDK_PATH)/lib  -lcutil
+ 
+ euler3d_cpu: euler3d_cpu.cpp
+-	g++ -O3 -Dblock_length=$(OMP_NUM_THREADS) -fopenmp euler3d_cpu.cpp -o euler3d_cpu
++	$(CXX) $(CXX_FLAGS) euler3d_cpu.cpp -o euler3d_cpu
+ 
+ euler3d_cpu_offload:
+ 	icc -g -O3 -DOMP_OFFLOAD -Dblock_length=$(MIC_OMP_NUM_THREADS) -fopenmp -offload-option,mic,compiler,"-no-opt-prefetch" euler3d_cpu.cpp -o euler3d_cpu_offload
+ 
+ euler3d_cpu_double: euler3d_cpu_double.cpp
+-	g++ -O3 -Dblock_length=$(OMP_NUM_THREADS) -fopenmp euler3d_cpu_double.cpp -o euler3d_cpu_double
++	$(CXX) -O3 -Dblock_length=$(OMP_NUM_THREADS) -fopenmp euler3d_cpu_double.cpp -o euler3d_cpu_double
+ 
+ #pre_euler3d: pre_euler3d.cu
+ #	nvcc -Xptxas -v -O3 --gpu-architecture=compute_13 --gpu-code=compute_13 pre_euler3d.cu -o pre_euler3d -I$(CUDA_SDK_PATH)/common/inc  -L$(CUDA_SDK_PATH)/lib  -lcutil
+@@ -27,10 +30,10 @@
+ #	nvcc -Xptxas -v -O3 --gpu-architecture=compute_13 --gpu-code=compute_13 pre_euler3d_double.cu -o pre_euler3d_double -I$(CUDA_SDK_PATH)/common/inc  -L$(CUDA_SDK_PATH)/lib  -lcutil
+ 
+ pre_euler3d_cpu: pre_euler3d_cpu.cpp
+-	g++ -O3 -Dblock_length=$(OMP_NUM_THREADS) -fopenmp pre_euler3d_cpu.cpp -o pre_euler3d_cpu
++	$(CXX) -O3 -Dblock_length=$(OMP_NUM_THREADS) -fopenmp pre_euler3d_cpu.cpp -o pre_euler3d_cpu
+ 
+ pre_euler3d_cpu_double: pre_euler3d_cpu_double.cpp
+-	g++ -O3 -Dblock_length=$(OMP_NUM_THREADS) -fopenmp pre_euler3d_cpu_double.cpp -o pre_euler3d_cpu_double
++	$(CXX) -O3 -Dblock_length=$(OMP_NUM_THREADS) -fopenmp pre_euler3d_cpu_double.cpp -o pre_euler3d_cpu_double
+ 
+ 
+ clean:

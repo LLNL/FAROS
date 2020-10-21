@@ -1,0 +1,232 @@
+diff -Naur rodinia_3.1/openmp/streamcluster/Makefile rodinia_3.1-patched/openmp/streamcluster/Makefile
+--- rodinia_3.1/openmp/streamcluster/Makefile	2020-06-10 12:14:56.000000000 -0700
++++ rodinia_3.1-patched/openmp/streamcluster/Makefile	2020-02-04 12:55:46.000000000 -0800
+@@ -16,7 +16,7 @@
+ 	$(CXX) $(CXXFLAGS) $(LDFLAGS) streamcluster_original.cpp -o $(TARGET_C) $(LIBS) -DENABLE_THREADS -pthread
+ 
+ omp:
+-	g++ -O3 -fopenmp -o $(TARGET_O) streamcluster_omp.cpp
++	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TARGET_O) streamcluster_omp.cpp
+ 
+ 
+ clean:
+diff -Naur rodinia_3.1/openmp/streamcluster/streamcluster_omp.cpp rodinia_3.1-patched/openmp/streamcluster/streamcluster_omp.cpp
+--- rodinia_3.1/openmp/streamcluster/streamcluster_omp.cpp	2020-06-10 12:14:56.000000000 -0700
++++ rodinia_3.1-patched/openmp/streamcluster/streamcluster_omp.cpp	2020-06-09 17:10:45.000000000 -0700
+@@ -22,7 +22,9 @@
+ #include <math.h>
+ #include <sys/resource.h>
+ #include <limits.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #ifdef ENABLE_PARSEC_HOOKS
+ #include <hooks.h>
+@@ -182,7 +184,11 @@
+ }
+ 
+ /* run speedy on the points, return total cost of solution */
+-float pspeedy(Points *points, float z, long *kcenter, int pid, pthread_barrier_t* barrier)
++float pspeedy(Points *points, float z, long *kcenter, int pid
++#ifdef ENABLE_THREADS
++    , pthread_barrier_t* barrier
++#endif
++    )
+ {
+ #ifdef PROFILE
+   double t1 = gettime();
+@@ -348,7 +354,11 @@
+ /* z is the facility cost, x is the number of this point in the array 
+    points */
+ 
+-double pgain(long x, Points *points, double z, long int *numcenters, int pid, pthread_barrier_t* barrier)
++double pgain(long x, Points *points, double z, long int *numcenters, int pid
++#ifdef ENABLE_THREADS
++    , pthread_barrier_t* barrier
++#endif
++    )
+ {
+   //  printf("pgain pthread %d begin\n",pid);
+ #ifdef ENABLE_THREADS
+@@ -596,7 +606,11 @@
+ 
+ float pFL(Points *points, int *feasible, int numfeasible,
+ 	  float z, long *k, double cost, long iter, float e, 
+-	  int pid, pthread_barrier_t* barrier)
++	  int pid
++#ifdef ENABLE_THREADS
++	  , pthread_barrier_t* barrier
++#endif
++    )
+ {
+ #ifdef ENABLE_THREADS
+   pthread_barrier_wait(barrier);
+@@ -623,7 +637,11 @@
+     for (i=0;i<iter;i++) {
+       x = i%numfeasible;
+ 			//printf("iteration %d started********\n", i);
+-      change += pgain(feasible[x], points, z, k, pid, barrier);
++      change += pgain(feasible[x], points, z, k, pid 
++#ifdef ENABLE_THREADS
++	  , barrier 
++#endif
++	  );
+ 			c++;
+ 			//printf("iteration %d finished @@@@@@\n", i);
+     }
+@@ -642,7 +660,11 @@
+   return(cost);
+ }
+ 
+-int selectfeasible_fast(Points *points, int **feasible, int kmin, int pid, pthread_barrier_t* barrier)
++int selectfeasible_fast(Points *points, int **feasible, int kmin, int pid
++#ifdef ENABLE_THREADS
++    , pthread_barrier_t* barrier
++#endif
++    )
+ {
+ #ifdef PROFILE
+   double t1 = gettime();
+@@ -719,7 +741,11 @@
+ 
+ /* compute approximate kmedian on the points */
+ float pkmedian(Points *points, long kmin, long kmax, long* kfinal,
+-	       int pid, pthread_barrier_t* barrier )
++	       int pid
++#ifdef ENABLE_THREADS
++	       , pthread_barrier_t* barrier 
++#endif
++    )
+ {
+   int i;
+   double cost;
+@@ -786,7 +812,11 @@
+   }
+ 
+   if( pid == 0 ) shuffle(points);
+-  cost = pspeedy(points, z, &k, pid, barrier);
++  cost = pspeedy(points, z, &k, pid
++#ifdef ENABLE_THREADS
++      barrier
++#endif
++      );
+ 
+ #ifdef PRINTINFO
+   if( pid == 0 )
+@@ -795,7 +825,11 @@
+   i=0;
+   /* give speedy SP chances to get at least kmin/2 facilities */
+   while ((k < kmin)&&(i<SP)) {
+-    cost = pspeedy(points, z, &k, pid, barrier);
++    cost = pspeedy(points, z, &k, pid
++#ifdef ENABLE_THREADS
++	, barrier
++#endif
++	);
+     i++;
+   }
+ 
+@@ -813,7 +847,11 @@
+ #endif
+     if (i >= SP) {hiz=z; z=(hiz+loz)/2.0; i=0;}
+     if( pid == 0 ) shuffle(points);
+-    cost = pspeedy(points, z, &k, pid, barrier);
++    cost = pspeedy(points, z, &k, pid
++#ifdef ENABLE_THREADS
++	, barrier
++#endif
++	);
+     i++;
+   }
+ 
+@@ -824,7 +862,11 @@
+   
+   if( pid == 0 )
+     {
+-      numfeasible = selectfeasible_fast(points,&feasible,kmin,pid,barrier);
++      numfeasible = selectfeasible_fast(points,&feasible,kmin,pid
++#ifdef ENABLE_THREADS
++	  ,barrier
++#endif
++	  );
+       for( int i = 0; i< points->num; i++ ) {
+ 	is_center[points->p[i].assign]= true;
+       }
+@@ -848,7 +890,11 @@
+ 
+     lastcost = cost;
+     cost = pFL(points, feasible, numfeasible,
+-	       z, &k, cost, (long)(ITER*kmax*log((double)kmax)), 0.1, pid, barrier);
++	       z, &k, cost, (long)(ITER*kmax*log((double)kmax)), 0.1, pid
++#ifdef ENABLE_THREADS
++	       , barrier
++#endif
++	       );
+ 
+     /* if number of centers seems good, try a more accurate FL */
+     if (((k <= (1.1)*kmax)&&(k >= (0.9)*kmin))||
+@@ -863,7 +909,11 @@
+       /* may need to run a little longer here before halting without
+ 	 improvement */
+       cost = pFL(points, feasible, numfeasible,
+-		 z, &k, cost, (long)(ITER*kmax*log((double)kmax)), 0.001, pid, barrier);
++		 z, &k, cost, (long)(ITER*kmax*log((double)kmax)), 0.001, pid
++#ifdef ENABLE_THREADS
++		 , barrier
++#endif
++		 );
+     }
+ 
+     if (k > kmax) {
+@@ -960,13 +1010,19 @@
+   long kmax;
+   long* kfinal;
+   int pid;
++#ifdef ENABLE_THREADS
+   pthread_barrier_t* barrier;
++#endif
+ };
+ 
+ void* localSearchSub(void* arg_) {
+ 
+   pkmedian_arg_t* arg= (pkmedian_arg_t*)arg_;
+-  pkmedian(arg->points,arg->kmin,arg->kmax,arg->kfinal,arg->pid,arg->barrier);
++  pkmedian(arg->points,arg->kmin,arg->kmax,arg->kfinal,arg->pid
++#ifdef ENABLE_THREADS
++      ,arg->barrier
++#endif
++      );
+ 
+   return NULL;
+ }
+@@ -976,8 +1032,8 @@
+   double t1 = gettime();
+ #endif
+ 
+-    pthread_barrier_t barrier;
+ #ifdef ENABLE_THREADS
++    pthread_barrier_t barrier;
+     pthread_barrier_init(&barrier,NULL,nproc);
+ #endif
+     pthread_t* threads = new pthread_t[nproc];
+@@ -991,8 +1047,8 @@
+       arg[i].pid = i;
+       arg[i].kfinal = kfinal;
+ 
+-      arg[i].barrier = &barrier;
+ #ifdef ENABLE_THREADS
++      arg[i].barrier = &barrier;
+       pthread_create(threads+i,NULL,localSearchSub,(void*)&arg[i]);
+ #else
+       localSearchSub(&arg[0]);
+@@ -1250,7 +1306,9 @@
+ 	
+ 	ompthreads = nproc;
+ 	nproc = 1;
++#ifdef _OPENMP
+ 	omp_set_num_threads(ompthreads);
++#endif
+ 	
+   srand48(SEED);
+   PStream* stream;

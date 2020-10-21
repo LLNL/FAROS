@@ -1,0 +1,13 @@
+diff -Naur rodinia_3.1/openmp/nn/nn_openmp.c rodinia_3.1-patched/openmp/nn/nn_openmp.c
+--- rodinia_3.1/openmp/nn/nn_openmp.c	2020-06-10 12:33:24.000000000 -0700
++++ rodinia_3.1-patched/openmp/nn/nn_openmp.c	2020-06-09 17:03:36.000000000 -0700
+@@ -3,7 +3,9 @@
+ #include <string.h>
+ #include <math.h>
+ #include <sys/time.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #define MAX_ARGS 10
+ #define REC_LENGTH 49	// size of a record in db

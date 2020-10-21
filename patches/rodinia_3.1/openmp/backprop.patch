@@ -1,0 +1,40 @@
+diff -Naur rodinia_3.1/openmp/backprop/backprop.c rodinia_3.1-patched/openmp/backprop/backprop.c
+--- rodinia_3.1/openmp/backprop/backprop.c	2020-06-09 13:31:50.000000000 -0700
++++ rodinia_3.1-patched/openmp/backprop/backprop.c	2020-06-09 13:32:27.000000000 -0700
+@@ -7,12 +7,13 @@
+  ******************************************************************
+  */
+ 
++#ifdef OPEN
+ #include <omp.h>
++#endif
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include "backprop.h"
+ #include <math.h>
+-#define OPEN
+ 
+ #define ABS(x)          (((x) > 0.0) ? (x) : (-(x)))
+ 
+diff -Naur rodinia_3.1/openmp/backprop/backprop.h rodinia_3.1-patched/openmp/backprop/backprop.h
+--- rodinia_3.1/openmp/backprop/backprop.h	2020-06-09 13:31:50.000000000 -0700
++++ rodinia_3.1-patched/openmp/backprop/backprop.h	2020-02-04 12:55:46.000000000 -0800
+@@ -6,7 +6,6 @@
+ 
+ #define ETA 0.3       //eta value
+ #define MOMENTUM 0.3  //momentum value
+-#define NUM_THREAD 8 //OpenMP threads
+ 
+ 
+ typedef struct {
+diff -Naur rodinia_3.1/openmp/backprop/facetrain.c rodinia_3.1-patched/openmp/backprop/facetrain.c
+--- rodinia_3.1/openmp/backprop/facetrain.c	2020-06-09 13:31:50.000000000 -0700
++++ rodinia_3.1-patched/openmp/backprop/facetrain.c	2020-06-09 13:33:29.000000000 -0700
+@@ -2,7 +2,6 @@
+ #include <stdlib.h>
+ #include <math.h>
+ #include "backprop.h"
+-#include "omp.h"
+ 
+ extern char *strcpy();
+ extern void exit();

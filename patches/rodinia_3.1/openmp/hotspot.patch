@@ -1,0 +1,29 @@
+diff -Naur rodinia_3.1/openmp/hotspot/hotspot_openmp.cpp rodinia_3.1-patched/openmp/hotspot/hotspot_openmp.cpp
+--- rodinia_3.1/openmp/hotspot/hotspot_openmp.cpp	2020-06-10 12:30:30.000000000 -0700
++++ rodinia_3.1-patched/openmp/hotspot/hotspot_openmp.cpp	2020-06-08 11:53:32.000000000 -0700
+@@ -1,6 +1,8 @@
+ #include <stdio.h>
+ #include <stdlib.h>
++#ifdef OPEN
+ #include <omp.h>
++#endif
+ #include <sys/time.h>
+ 
+ // Returns the current system time in microseconds 
+@@ -28,7 +30,6 @@
+ #define K_SI 100
+ /* capacitance fitting factor	*/
+ #define FACTOR_CHIP	0.5
+-#define OPEN
+ //#define NUM_THREAD 4
+ 
+ typedef float FLOAT;
+@@ -53,7 +54,7 @@
+  */
+ void single_iteration(FLOAT *result, FLOAT *temp, FLOAT *power, int row, int col,
+ 					  FLOAT Cap_1, FLOAT Rx_1, FLOAT Ry_1, FLOAT Rz_1, 
+-					  FLOAT step)
++					  FLOAT step) 
+ {
+     FLOAT delta;
+     int r, c;

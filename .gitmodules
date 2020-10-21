@@ -1,0 +1,3 @@
+[submodule "remarks"]
+	path = remarks
+	url = git@github.com:ggeorgakoudis/remarks.git

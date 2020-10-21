@@ -1,0 +1,68 @@
+diff --git a/src-openmp/eam.c b/src-openmp/eam.c
+index 513eb7a..11131d4 100644
+--- a/src-openmp/eam.c
++++ b/src-openmp/eam.c
+@@ -91,7 +91,9 @@
+ #include <string.h>
+ #include <math.h>
+ #include <assert.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "constants.h"
+ #include "memUtils.h"
+diff --git a/src-openmp/ljForce.c b/src-openmp/ljForce.c
+index 98a3118..f05b521 100644
+--- a/src-openmp/ljForce.c
++++ b/src-openmp/ljForce.c
+@@ -64,7 +64,9 @@
+ #include <stdlib.h>
+ #include <assert.h>
+ #include <string.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "constants.h"
+ #include "mytype.h"
+diff --git a/src-openmp/timestep.c b/src-openmp/timestep.c
+index a200618..3c44a4b 100644
+--- a/src-openmp/timestep.c
++++ b/src-openmp/timestep.c
+@@ -3,7 +3,9 @@
+ 
+ #include "timestep.h"
+ 
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "CoMDTypes.h"
+ #include "linkCells.h"
+diff --git a/src-openmp/yamlOutput.c b/src-openmp/yamlOutput.c
+index c2c7d26..c0bff86 100644
+--- a/src-openmp/yamlOutput.c
++++ b/src-openmp/yamlOutput.c
+@@ -15,7 +15,9 @@
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <time.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "CoMD_info.h"
+ #include "mytype.h"
+@@ -64,7 +66,11 @@ void yamlBegin(void)
+ void yamlAppInfo(FILE* file)
+ {
+ 
++#ifdef _OPENMP
+    int numThreads = omp_get_max_threads();
++#else
++   int numThreads = 1;
++#endif
+ 
+    if (! printRank())
+       return;

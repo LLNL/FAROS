@@ -1,0 +1,29 @@
+diff -Naur rodinia_3.1/openmp/particlefilter/Makefile rodinia_3.1-patched/openmp/particlefilter/Makefile
+--- rodinia_3.1/openmp/particlefilter/Makefile	2020-06-10 12:12:03.000000000 -0700
++++ rodinia_3.1-patched/openmp/particlefilter/Makefile	2020-02-04 12:55:46.000000000 -0800
+@@ -1,7 +1,11 @@
+ #makefile
+ 
++CC=gcc
++CFLAGS=-O3 -ffast-math -fopenmp
++LDFLAGS=-lm
++
+ openmp: ex_particle_OPENMP_seq.c
+-	gcc -O3 -ffast-math -fopenmp ex_particle_OPENMP_seq.c -o particle_filter -lm 
++	$(CC) $(CFLAGS) ex_particle_OPENMP_seq.c -o particle_filter $(LDFLAGS)
+ 
+ 
+ icc_openmp: ex_particle_OPENMP_seq.c
+diff -Naur rodinia_3.1/openmp/particlefilter/ex_particle_OPENMP_seq.c rodinia_3.1-patched/openmp/particlefilter/ex_particle_OPENMP_seq.c
+--- rodinia_3.1/openmp/particlefilter/ex_particle_OPENMP_seq.c	2020-06-10 12:12:03.000000000 -0700
++++ rodinia_3.1-patched/openmp/particlefilter/ex_particle_OPENMP_seq.c	2020-06-09 17:04:25.000000000 -0700
+@@ -7,7 +7,9 @@
+ #include <stdio.h>
+ #include <math.h>
+ #include <sys/time.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ #include <limits.h>
+ #define PI 3.1415926535897932
+ /**

@@ -1,0 +1,22 @@
+diff --git a/IS/is.c b/IS/is.c
+index b209a56..8428dd9 100644
+--- a/IS/is.c
++++ b/IS/is.c
+@@ -188,6 +188,17 @@ INT_TYPE test_index_array[TEST_ARRAY_SIZE],
+ /***********************/
+ /* function prototypes */
+ /***********************/
++extern void timer_clear(int);
++extern void timer_start(int);
++extern void timer_stop(int);
++extern double timer_read(int);
++extern void c_print_results(char *name, char class, int n1, int n2,
++			    int n3, int niter, int nthreads, double t,
++			    double mops, char *optype, int passed_verification,
++			    char *npbversion, char *compiletime, char *cc,
++			    char *clink, char *c_lib, char *c_inc,
++			    char *cflags, char *clinkflags, char *rand);
++
+ double	randlc( double *X, double *A );
+ 
+ void full_verify( void );

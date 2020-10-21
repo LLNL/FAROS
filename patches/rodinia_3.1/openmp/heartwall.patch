@@ -1,0 +1,68 @@
+diff -Naur rodinia_3.1/openmp/heartwall/AVI/makefile rodinia_3.1-patched/openmp/heartwall/AVI/makefile
+--- rodinia_3.1/openmp/heartwall/AVI/makefile	2020-06-09 19:19:24.000000000 -0700
++++ rodinia_3.1-patched/openmp/heartwall/AVI/makefile	2020-02-04 12:55:46.000000000 -0800
+@@ -1,12 +1,13 @@
++CC=gcc
+ all: avimod.o avilib.o
+ 
+ # compile supporting function file into object (binary)
+ avimod.o: avilib.h avimod.c 
+-	gcc -c avimod.c
++	$(CC) -c avimod.c
+ 
+ # compile supporting function file into object (binary)
+ avilib.o: avilib.h avilib.c
+-	gcc -c avilib.c
++	$(CC) -c avilib.c
+ 
+ # delete files
+ clean:
+diff -Naur rodinia_3.1/openmp/heartwall/main.c rodinia_3.1-patched/openmp/heartwall/main.c
+--- rodinia_3.1/openmp/heartwall/main.c	2020-06-09 19:19:24.000000000 -0700
++++ rodinia_3.1-patched/openmp/heartwall/main.c	2020-06-09 13:47:12.000000000 -0700
+@@ -11,7 +11,9 @@
+ 
+ #include <avilib.h>
+ #include <avimod.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ #include "define.c"
+ #include "kernel.c"
+@@ -543,7 +545,9 @@
+ 	//	PROCESSING
+ 	//====================================================================================================
+ 
++#ifdef _OPENMP
+ 		omp_set_num_threads(omp_num_threads);
++#endif
+ 		
+ 
+ 		#pragma omp parallel for
+diff -Naur rodinia_3.1/openmp/heartwall/makefile rodinia_3.1-patched/openmp/heartwall/makefile
+--- rodinia_3.1/openmp/heartwall/makefile	2020-06-09 19:19:24.000000000 -0700
++++ rodinia_3.1-patched/openmp/heartwall/makefile	2020-02-04 12:55:46.000000000 -0800
+@@ -3,16 +3,19 @@
+ override OUTPUT = -DOUTPUT
+ endif
+ 
++CC=gcc
++CFLAGS=-O3 -fopenmp
++
+ # link objects(binaries) together
+ heartwall: main.o ./AVI/avilib.o ./AVI/avimod.o
+-	gcc main.o ./AVI/avilib.o ./AVI/avimod.o -lm -fopenmp -o heartwall
++	$(CC) $(CFLAGS) main.o ./AVI/avilib.o ./AVI/avimod.o -lm -o heartwall
+ 
+ # compile main function file into object (binary)
+ main.o: main.c define.c kernel.c
+-	gcc $(OUTPUT) main.c -I./AVI -c -O3 -fopenmp
++	$(CC) $(OUTPUT) main.c -I./AVI -c $(CFLAGS)
+ 
+ ./AVI/avilib.o ./AVI/avimod.o:
+-	cd AVI; make;
++	cd AVI; make CC=$(CC);
+ 
+ # delete all object files
+ clean:

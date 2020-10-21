@@ -1,0 +1,19 @@
+diff -Naur rodinia_3.1/openmp/srad/srad_v2/srad.cpp rodinia_3.1-patched/openmp/srad/srad_v2/srad.cpp
+--- rodinia_3.1/openmp/srad/srad_v2/srad.cpp	2020-06-10 12:13:12.000000000 -0700
++++ rodinia_3.1-patched/openmp/srad/srad_v2/srad.cpp	2020-06-09 17:07:08.000000000 -0700
+@@ -4,13 +4,14 @@
+ //#define OUTPUT
+ 
+ 
+-#define OPEN
+ #define	ITERATION
+ #include <stdlib.h>
+ #include <stdio.h>
+ #include <string.h>
+ #include <math.h>
++#ifdef OPEN
+ #include <omp.h>
++#endif
+ 
+ void random_matrix(float *I, int rows, int cols);
+ 

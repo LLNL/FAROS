@@ -1,0 +1,47 @@
+diff -Naur rodinia_3.1/openmp/lud/omp/Makefile rodinia_3.1-patched/openmp/lud/omp/Makefile
+--- rodinia_3.1/openmp/lud/omp/Makefile	2020-06-10 12:09:19.000000000 -0700
++++ rodinia_3.1-patched/openmp/lud/omp/Makefile	2020-02-04 12:55:46.000000000 -0800
+@@ -110,7 +110,7 @@
+ 				$(CXX) -c $(ALL_CFLAGS) $< -o $@
+ 
+ clean:
+-	-rm --force $(EXECUTABLE) $(OBJECTS) *~
++	-rm -rf $(EXECUTABLE) $(OBJECTS) *~
+ 
+ .PHONY: clean
+ 
+diff -Naur rodinia_3.1/openmp/lud/omp/lud.c rodinia_3.1-patched/openmp/lud/omp/lud.c
+--- rodinia_3.1/openmp/lud/omp/lud.c	2020-06-10 12:09:19.000000000 -0700
++++ rodinia_3.1-patched/openmp/lud/omp/lud.c	2020-02-04 12:55:46.000000000 -0800
+@@ -120,7 +120,7 @@
+   stopwatch_start(&sw);
+   lud_omp(m, matrix_dim);
+   stopwatch_stop(&sw);
+-  printf("Time consumed(ms): %lf\n", 1000*get_interval_by_sec(&sw));
++  printf("Time consumed(s): %lf\n", get_interval_by_sec(&sw));
+ 
+   if (do_verify){
+     printf("After LUD\n");
+diff -Naur rodinia_3.1/openmp/lud/omp/lud_omp.c rodinia_3.1-patched/openmp/lud/omp/lud_omp.c
+--- rodinia_3.1/openmp/lud/omp/lud_omp.c	2020-06-10 12:09:19.000000000 -0700
++++ rodinia_3.1-patched/openmp/lud/omp/lud_omp.c	2020-06-09 17:02:11.000000000 -0700
+@@ -1,5 +1,7 @@
+ #include <stdio.h>
++#ifdef _OPENMP
+ #include <omp.h>
++#endif
+ 
+ extern int omp_num_threads;
+ 
+@@ -52,9 +54,11 @@
+ {
+     omp_set_num_threads(224);
+ #else
++#ifdef _OPENMP
+     printf("running OMP on host\n");
+     omp_set_num_threads(omp_num_threads);
+ #endif
++#endif
+     for (offset = 0; offset < size - BS ; offset += BS)
+     {
+         // lu factorization of left-top corner block diagonal matrix 
