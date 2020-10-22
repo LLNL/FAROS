@@ -1,0 +1,71 @@
+LULESH_RAJA:
+    fetch: '[ ! -d "./RAJAProxies" ] && git clone --recursive https://github.com/LLNL/RAJAProxies.git;'
+    tags: ['proxy']
+    build_dir: 'RAJAProxies/'
+    build: {
+        seq: [ 'mkdir -p build; pushd build; cmake -DCMAKE_C_COMPILER=clang
+               -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++ 
+               -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -fsave-optimization-record -save-stats" 
+               -DENABLE_OPENMP="On" ../; 
+               make -j lulesh-v2.0-RAJA-seq.exe; cp bin/lulesh-v2.0-RAJA-seq.exe bin/lulesh2.0;'],
+        omp: [ 'mkdir -p build; pushd build; cmake -DCMAKE_C_COMPILER=clang
+               -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++ 
+               -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -fsave-optimization-record -save-stats" 
+               -DENABLE_OPENMP="On" ../; 
+               make -j lulesh-v2.0-RAJA-omp.exe; cp bin/lulesh-v2.0-RAJA-omp.exe bin/lulesh2.0' ]
+    }
+    copy: [ 'build/bin/lulesh2.0' ]
+    bin: 'lulesh2.0'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./lulesh2.0'
+    input: '-i 500'
+    measure : 'Grind time.* (\d+\.\d+) .*overall'
+    clean : [ 'rm -rf build/' ]
+
+Kripke_RAJA:
+    fetch: '[ ! -d "./RAJAProxies" ] && git clone --recursive https://github.com/LLNL/RAJAProxies.git;'
+    tags: ['proxy']
+    build_dir: 'RAJAProxies/'
+    build: {
+        seq: [ 'mkdir -p build; pushd build; cmake -DCMAKE_C_COMPILER=clang
+               -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++ 
+               -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -fsave-optimization-record -save-stats" 
+               -DENABLE_OPENMP="Off" ../; 
+               make -j kripke.exe'],
+        omp: [ 'mkdir -p build; pushd build; cmake -DCMAKE_C_COMPILER=clang
+               -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++ 
+               -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -fsave-optimization-record -save-stats" 
+               -DENABLE_OPENMP="On" ../; 
+               make -j kripke.exe']
+    }
+    copy: [ 'build/bin/kripke.exe' ]
+    bin: 'kripke.exe'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./kripke.exe'
+    input: ''
+    measure : 'Grind time\s+:\s*([0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)'
+    clean : [ 'rm -rf build/' ]
+
+CoMD_RAJA:
+    fetch: '[ ! -d "./RAJAProxies" ] && git clone --recursive https://github.com/LLNL/RAJAProxies.git;'
+    tags: ['proxy']
+    build_dir: 'RAJAProxies/'
+    build: {
+        seq: [ 'mkdir -p build; pushd build; cmake -DCMAKE_C_COMPILER=clang
+               -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++ 
+               -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -fsave-optimization-record -save-stats" 
+               -DENABLE_OPENMP="Off" ../; 
+               make -j coMD_threaded;
+               cp -r ../CoMD/pots/ ../'],
+        omp: [ 'mkdir -p build; pushd build; cmake -DCMAKE_C_COMPILER=clang
+               -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++ 
+               -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -fsave-optimization-record -save-stats" 
+               -DENABLE_OPENMP="On" ../; 
+               make -j coMD_threaded;
+               cp -r ../CoMD/pots/ ../'],
+    }
+    copy: [ 'build/bin/coMD_threaded', './pots']
+    bin: 'coMD_threaded'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./coMD_threaded'
+    input: '-e -i 1 -j 1 -k 1 -x 20 -y 20 -z 20'
+    measure: ''
+    clean: [ 'rm -rf build/; rm -rf pots/' ]
+
