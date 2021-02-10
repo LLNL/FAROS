@@ -227,12 +227,26 @@ def diff_reports( report_dir, builds, mode ):
 
     if not os.path.exists( out_yaml ):
         print('Creating diff remark YAML files...')
-        subprocess.run( opt_diff  + '--output ' + out_yaml + ' %s/%s.opt.yaml %s/%s.opt.yaml'%\
+        p = subprocess.run( opt_diff  + '--output ' + out_yaml + ' %s/%s.opt.yaml %s/%s.opt.yaml'%\
                 (report_dir, builds[0], report_dir, builds[1]), shell=True)
+        if p.returncode == 0:
+            print('Done generating YAML diff optimization report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
+        else:
+            print('Failed generating YAML diff optimization report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
+    else:
+        print('YAML diff optimization report for builds %s|%s mode %s exists'%( builds[0], builds[1], mode ))
+
     if not os.path.exists( out_html ):
         print('Creating HTML report output diff for %s %s..' % ( builds[0],
             builds[1]) )
-        subprocess.run( './opt-viewer/opt-viewer.py --output-dir %s %s' %( out_html, out_yaml), shell=True)
+        p = subprocess.run( './opt-viewer/opt-viewer.py --output-dir %s %s' %( out_html, out_yaml), shell=True)
+        if p.returncode == 0:
+            print('Done generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
+        else:
+            print('Failed generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
+    else:
+        print('HTML output for builds %s|%s mode %s exists'%( builds[0], builds[1], mode ))
+
 
 def generate_remark_reports( config, program ):
     report_dir = './reports/' + program + '/'
@@ -245,6 +259,13 @@ def generate_remark_reports( config, program ):
             print('Creating HTML report output for build %s ...' % ( build ) )
             p = subprocess.run( './opt-viewer/opt-viewer.py --output-dir %s %s' %(
                 out_html, in_yaml), shell=True)
+            if p.returncode == 0:
+                print('Done generating compilation reports!')
+            else:
+                print('Failed generating compilation reports (expects build was '\
+                        'successful)')
+        else:
+            print('HTML output for build %s exists'%( build ))
 
     # Create repors for 2-combinations of build options.
     combos = itertools.combinations( config[program]['build'], 2 )
@@ -253,12 +274,6 @@ def generate_remark_reports( config, program ):
         diff_reports( report_dir, builds, 'analysis' )
         diff_reports( report_dir, builds, 'missed' )
         diff_reports( report_dir, builds, 'passed' )
-
-    if p.returncode == 0:
-        print('Done generating compilation reports!')
-    else:
-        print('Failed generating compilation reports (expects build was '\
-                'successful)')
 
 def fetch(config, program):
     # directories
