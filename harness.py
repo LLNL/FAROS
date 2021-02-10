@@ -63,11 +63,12 @@ def run(config, program, reps, dry):
                 print('path', bin_dir, 'exe',exe)
                 t1 = time.perf_counter()
                 p = subprocess.run( exe, capture_output=True, cwd=bin_dir, shell=True )
-                out = str(p.stdout)
-                err = str(p.stderr)
+                out = str(p.stdout.decode('utf-8'))
+                err = str(p.stderr.decode('utf-8'))
                 output = out + err
-                print('Out', p.stdout.decode('utf-8') )
-                print('Err', p.stderr.decode('utf-8') )
+                print(output)
+                #print('Out', p.stdout.decode('utf-8') )
+                #print('Err', p.stderr.decode('utf-8') )
                 with open('%s/stdout-%d.txt'%(bin_dir, i), 'w') as f:
                     f.write(p.stdout.decode('utf-8'));
                 with open('%s/stderr-%d.txt'%(bin_dir, i), 'w') as f:
@@ -118,14 +119,13 @@ def show_stats(config, program):
         return
 
     ranked = sorted( [ (b, np.mean( results[program][b]) ) for b in config[program]['build'] if results[program][b]], key=lambda x: x[1] )
-    no_runs = { b : len( results[program][b])  for b in config[program]['build'] }
+    num_runs = { b : len( results[program][b])  for b in config[program]['build'] }
     print('=======')
-    print(program, '# runs', no_runs)
-    print('Results')
-    print('Ranked by speed')
-    print('---------------')
+    print(program, '# runs', num_runs, '\n')
+    print('# Results\n')
+    print('## Ranked by speed')
     for b in ranked:
-        print(b[0], ':', b[1], 's', 'slowdown: %.3f'%(b[1]/ranked[0][1]) )
+        print(b[0], ':', '%8.3f'%(b[1]), 's,', 'slowdown/%s: %8.3f'%(ranked[0][0], b[1]/ranked[0][1]) )
     print('=======')
    
 def merge_stats_reports( program, build_dir, mode ):
@@ -288,18 +288,20 @@ def main():
     parser.add_argument('-t', '--tags', dest='tags', type=str, nargs='+', help='tagged program to use from the config')
     parser.add_argument('-s', '--stats', dest='stats', action='store_true', help='show run statistics')
     parser.add_argument('-d', '--dry-run', dest='dry', action='store_true', help='enable dry run')
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', help='verbose printing')
     args = parser.parse_args()
 
     with open(args.input, 'r') as f:
         config = yaml.load(f, Loader=CLoader)
 
-    print( '# apps: ', len(config) )
-    print('args.programs', args.programs)
-    print('args.tags', args.tags)
-    print('args.fetch', args.fetch)
-    print('args.build', args.build)
-    print('args.run', args.run)
-    print('args.generate', args.generate)
+    print( '# apps: ', len(config), ' selected ', args.programs )
+    if args.verbose:
+        print('args.programs', args.programs)
+        print('args.tags', args.tags)
+        print('args.fetch', args.fetch)
+        print('args.build', args.build)
+        print('args.run', args.run)
+        print('args.generate', args.generate)
 
     programs = []
     if args.programs:
