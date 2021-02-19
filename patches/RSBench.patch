@@ -1,3 +1,36 @@
+diff --git a/openmp-offload/Makefile b/openmp-offload/Makefile
+index 1063181..ec02d9a 100644
+--- a/openmp-offload/Makefile
++++ b/openmp-offload/Makefile
+@@ -2,7 +2,7 @@
+ # User Options
+ #===============================================================================
+ 
+-COMPILER  = intel
++COMPILER  ?= intel
+ OPTIMIZE  = yes
+ DEBUG     = no
+ PROFILE   = no
+diff --git a/openmp-offload/io.c b/openmp-offload/io.c
+index 1c13494..0d04e56 100644
+--- a/openmp-offload/io.c
++++ b/openmp-offload/io.c
+@@ -194,7 +194,14 @@ Input read_CLI( int argc, char * argv[] )
+ 			else
+ 				print_CLI_error();
+ 		}
+-		else
++        else if( strcmp(arg, "-t") == 0 )
++		{
++			if( ++i < argc )
++				input.nthreads = atoi(argv[i]);
++			else
++				print_CLI_error();
++		}
++        else
+ 			print_CLI_error();
+ 	}
+ 
 diff --git a/openmp-threading/io.c b/openmp-threading/io.c
 index dc5201f..a179d97 100644
 --- a/openmp-threading/io.c
