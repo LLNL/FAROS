@@ -1,5 +1,10 @@
 # FAROS: A Framework for Benchmarking and Analysis of Compiler Optimization
 
+FAROS is an extensible framework to automate and structure the analysis 
+of compiler optimizations of OpenMP programs. FAROS provides a generic 
+configuration interface to profile and analyze OpenMP applications with 
+their native build configurations.
+
 ## Description and usage
 
 This repo contains a benchmark harness to fetch, build, and run programs
@@ -13,7 +18,7 @@ different compilation.
 
 The harness script in python, named benchmark.py, takes as input a YAML
 configuration file and a set of options to build and run programs
-described in that configuration. Figure fig:harness shows the help
+described in that configuration. You can see below the help
 output describing possible options. The configuration file input is set
 with the `-i, --input` argument. There are three different actions the
 harness performs:
