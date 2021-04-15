@@ -1,0 +1,107 @@
+RSBench:
+    fetch: 'git clone https://github.com/ANL-CESAR/RSBench.git;
+            cd RSBench; git checkout 5b795bc1e11e2c9f22f17974d971be084d96096c;
+            git apply ../../patches/RSBench.patch'
+    tags: ['proxy']
+    build_dir: 'RSBench'
+    build: {
+        omp-offload-clang: [ 'cd openmp-offload; make COMPILER=clang
+            CFLAGS="-v -Ofast -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -fsave-optimization-record -save-stats";
+            cp rsbench ../' ],
+        omp-offload-ibm: [ 'cd openmp-offload; make COMPILER=ibm OPTIMIZE=yes
+            CFLAGS="-Xnvcc --resource-usage -Ofast -std=gnu99 -Wall -qsmp=omp -qoffload -qtgtarch=sm_70" COMPILER=ibm;
+            cp rsbench ../' ],
+        #Cuda compilation statistics are not parsed a.t.m. 
+        #The comparision will not be apple to apple comparisions unless 
+        #the implementations are equivalent.
+        #Namely, the same regions are executed on the gpu.
+        cuda: [ 'cd cuda; make SM_VERSION="70";
+            cp rsbench ../' ]
+    }
+    copy: [ 'rsbench' ]
+    bin: 'rsbench'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./rsbench'
+    input: '-s small -m event -t 1'
+    measure: 'Runtime. *(\d+\.\d+) .*seconds' 
+    clean: [ 'git clean -fx' ]
+
+XSBench:
+    fetch: 'git clone https://github.com/ANL-CESAR/XSBench.git;
+            cd XSBench; git checkout 9921857305836963dcfebb9d6006e7260dfe7eb3
+            git apply ../../patches/XSBench.patch'
+    tags: ['proxy']
+    build_dir: 'XSBench'
+    build: {
+        omp-offload-clang: [ 'cd openmp-offload; make COMPILER=clang OPTIMIZE=yes
+            CFLAGS="-v -Ofast -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70";
+            cp XSBench ../' ],
+        omp-offload-ibm: [ 'cd openmp-offload; make COMPILER=ibm OPTIMIZE=yes
+            CFLAGS="-Xnvcc --resource-usage -Ofast -std=gnu99 -Wall -qsmp=omp -qoffload -qtgtarch=sm_70" COMPILER=ibm;
+            cp XSBench ../' ],
+        #Cuda compilation statistics are not parsed a.t.m. 
+        #The comparision will not be apple to apple comparisions unless 
+        #the implementations are equivalent.
+        #Namely, the same regions are executed on the gpu.
+        cuda: [ 'cd cuda; make SM_VERSION="70";
+            cp XSBench ../' ]
+    }
+    copy: [ 'XSBench' ]
+    bin: 'XSBench'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./XSBench'
+    input: '-t 1 -m event -s small'
+    measure: 'Runtime. *(\d+\.\d+) .*seconds' 
+    clean: [ 'git clean -fx' ]
+
+miniFE:
+    fetch: 'git clone https://github.com/Mantevo/miniFE.git;
+            cd miniFE; git checkout c043cd1bafebad7fad58904625768024ddb33b73'
+    tags: ['proxy']
+    build_dir: 'miniFE'
+    build: {
+        omp-offload-clang: [ 'cd openmp45/src; 
+        make  CC=clang CXX=clang++ 
+        CFLAGS="-v -O3 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda 
+        --cuda-path=${CUDA_HOME} -ffp-contract=fast -I. -I../utils 
+        -I../fem -DMINIFE_SCALAR=double -DMINIFE_LOCAL_ORDINAL=int 
+        -DMINIFE_GLOBAL_ORDINAL=int -DMINIFE_CSR_MATRIX  
+        -DMINIFE_INFO=1 -DMINIFE_KERNELS=0"; cp miniFE.x ../../'
+        ],
+        omp-offload-ibm: [ 'cd openmp45/src; 
+            make CC=xlc CXX=xlC  CFLAGS="-Xnvcc --resource-usage -O3  -qsmp=omp -qoffload -qtgtarch=sm_70 
+            --cuda-path=${CUDA_HOME} -ffp-contract=fast -I. -I../utils  -I../fem -DMINIFE_SCALAR=double 
+            -DMINIFE_LOCAL_ORDINAL=int  -DMINIFE_GLOBAL_ORDINAL=int -DMINIFE_CSR_MATRIX  
+            -DMINIFE_INFO=0 -DMINIFE_KERNELS=0"; cp miniFE.x ../../'
+        ]
+    }
+    copy: [ 'miniFE.x' ]
+    bin: 'miniFE.x'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./miniFE.x'
+#input is way to small for a gpu application. Maybe try something larger.
+    input: '-nx 64'
+    measure: ''
+    clean: [ 'git clean -fx' ]
+
+miniQMC:
+    fetch: 'git clone https://github.com/QMCPACK/miniqmc.git;
+            cd miniqmc; git checkout 5bc6dd7086f85a2905628e7d1eab739c77c88c1e;' 
+    tags: ['proxy']
+    build_dir: 'miniqmc'
+    build: {
+        omp-offload-clang: ['rm -r build/; mkdir build; cd build;
+                         cmake -DCMAKE_C_COMPILER=clang -DENABLE_OFFLOAD=1
+                        -DUSE_OBJECT_TARGET=ON
+                        -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LINKER=clang++ 
+                        -DCMAKE_EXE_LINKER_FLAGS=-v ..; make miniqmc; cp ./bin/miniqmc ../'],
+        omp-offload-ibm: ['rm -r build/; mkdir build; cd build;
+                          cmake -DCMAKE_C_COMPILER=xlc_r -DENABLE_OFFLOAD=1 
+                          -DCMAKE_CXX_COMPILER=xlC_r -DCMAKE_LINKER=xlC  
+                          -DCMAKE_EXE_LINKER_FLAGS="-Xnvcc --resource-usage" ..;
+                          make miniqmc; cp ./bin/miniqmc ../']
+    }
+    copy: [ 'miniqmc' ]
+    bin: 'miniqmc'
+    run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./miniqmc'
+    input: '-g "2 2 1"'
+    measure: 'Total\s+ *(\d+\.\d+) ' 
+    clean: [ 'git reset --hard; git clean -fx' ]
+

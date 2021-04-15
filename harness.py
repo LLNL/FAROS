@@ -27,6 +27,64 @@ from pathlib import Path
 import itertools
 import math
 
+# This is a "pretty" fix when we dump yaml files, mangled function names can be quite long. When yaml is using such names as keys, it adds a "?" by default
+# which is not nice to read. This variable will define maximum width.
+
+def write_compile_logs(output_directory, stdout, stderr):
+    with open(("%s/build_log.out") % (output_directory), "w") as f:
+        f.write(stdout)
+    with open(("%s/build_log.err") % (output_directory), "w") as f:
+        f.write(stderr)
+
+def get_nvlink_info(error_str):
+    gpu_compile_info = {}
+    current_func = None
+    global_info = 0
+    function_name = 1
+    function_stats = 2
+    current_state = global_info
+    for l in error_str.split("\n"):
+        if "nvlink" in l:
+            if current_state == global_info:
+                gmem = re.findall('nvlink info\s+:\s+([0-9]+) bytes gmem',l)
+                if len(gmem) != 0:
+                    gpu_compile_info['global gmem bytes'] = int(gmem[0])
+                    current_state = function_name
+            elif current_state ==  function_name:
+                func_name = re.findall('nvlink info\s+: Function properties for \'(.*?)\':',l)
+                if len(func_name) != 0:
+                    current_func = func_name[0]
+                    current_state = function_stats
+                    if current_func in gpu_compile_info:
+                        print('Should never happen')
+                        print('Same function name occurs more than once in object file...')
+                        print('%s'%str(current_func))
+                        print('Exit ...')
+                        sys.exit(0)
+                    gpu_compile_info[str(current_func)] = {}
+            elif current_state == function_stats:
+                current_state = function_name
+                gpu_compile_info[current_func] = {}
+                if 'registers' in l:
+                    regs = re.findall('nvlink info\s+:\s+used ([0-9]+) registers,',l)
+                    gpu_compile_info[current_func]['registers'] = int(regs[0])
+                if 'stack' in l:
+                    stack = re.findall('([0-9]+) stack,',l)
+                    gpu_compile_info[current_func]["stack"] = int(stack[0])
+                if 'bytes smem' in l:
+                    smem = re.findall('([0-9]+) bytes smem,', l)
+                    gpu_compile_info[current_func]["smem"] = int(smem[0])
+                if 'bytes cmem' in l:
+                    cmem = re.findall('([0-9]+) bytes cmem\[([0-9]+)\]',l)
+                    for v in cmem:
+                        key='cmem[%s]' % v[1]
+                        gpu_compile_info[current_func][key] = int(v[0])
+                if 'bytes lmem' in l:
+                    lmem = re.findall('([0-9]+) bytes lmem', l)
+                    gpu_compile_info[current_func]['lmem'] = int(lmem[0])
+                current_func = None
+    return gpu_compile_info
+
 def run(config, program, reps, dry):
     print('Launching program', program, 'with modes', config[program]['build'])
     exe = config[program]['run'] + ' ' + config[program]['input']
@@ -46,11 +104,12 @@ def run(config, program, reps, dry):
         try:
             if (not mode in results[program]) or (not results[program][mode]):
                 start = 0
-                results[program][mode] = []
-            elif len(results[program][mode]) < reps:
-                start = len(results[program][mode])
+                results[program][mode] = {}
+                results[program][mode]['exec_time'] = []
+            elif len(results[program][mode]['exec_time']) < reps:
+                start = len(results[program][mode]['exec_time'])
             else:
-                print('FOUND', program, mode, 'runs', len(results[program][mode]) )
+                print('FOUND', program, mode, 'runs', len(results[program][mode]['exec_time']) )
                 continue
         except Exception as e:
             print('ERROR', e, 'running', program, 'mode', mode)
@@ -92,10 +151,10 @@ def run(config, program, reps, dry):
                 else:
                     runtime = t2 - t1
 
-                results[program][mode].append(runtime)
+                results[program][mode]['exec_time'].append(runtime)
 
                 with open('./results/results-%s.yaml'%(program), 'w') as f:
-                    yaml.dump( results, f )
+                    yaml.dump( results, f)
 
 #def merge_nested_dict(d1, d2):
 #    for k in d1:
@@ -193,15 +252,47 @@ def compile_and_install(config, program, repo_dir, mode):
         return
 
     os.makedirs( bin_dir, exist_ok=True )
+
+    #Create directory to store build logs 
+    build_log_dir = 'build_logs/%s/%s/' % (program, mode)
+
+    print('Making Build Log Directory...')
+    os.makedirs( build_log_dir, exist_ok=True )
+
     print('Clean...')
     subprocess.run( config[program]['clean'], cwd=build_dir, shell=True)
     print('===> Build...program %s mode %s\n%s' % (program, mode, config[program]['build'][mode]) )
     try:
-        subprocess.run( config[program]['build'][mode], cwd=build_dir, shell=True )
+        p = subprocess.run( config[program]['build'][mode], cwd=build_dir, shell=True, capture_output=True)
     except Exception as e:
         print('building %s mode %s failed'%(program, mode), e)
+        write_compile_logs(build_log_dir, p.stdout.decode('utf-8'), p.stderr.decode('utf-8'))
         input('key...')
         sys.exit(1)
+
+    print('Storing compilation outputs')
+    write_compile_logs(build_log_dir, p.stdout.decode('utf-8'), p.stderr.decode('utf-8'))
+
+    print('Getting compilation statistics from nvinfo')
+    nv_info = get_nvlink_info(p.stderr.decode('utf-8'))
+
+    print('Storing compilation statistis')
+    results = { program: {} }
+    try:
+        with open('./results/results-%s.yaml'%(program), 'r') as f:
+            results = yaml.load(f, Loader=CLoader)
+    except FileNotFoundError as e:
+        pass
+
+    if (not mode in results[program]) or (not results[program][mode]):
+        results[program][mode] = {}
+        results[program][mode]['exec_time'] = []
+        results[program][mode]['compile_stats'] = {}
+
+    results[program][mode]['compile_stats'] = nv_info
+
+    with open('./results/results-%s.yaml'%(program), 'w') as f:
+        yaml.dump( results, f)
 
     print('Merge stats and reports...')
     merge_stats_reports( program, build_dir, mode )

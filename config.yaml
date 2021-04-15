@@ -106,8 +106,7 @@ miniAMR:
     clean: [ 'git clean -fx' ]
 
 XSBench:
-    fetch: 'git clone https://github.com/ANL-CESAR/XSBench.git;
-            cd XSBench; git apply ../../patches/XSBench.patch'
+    fetch: 'git clone https://github.com/ANL-CESAR/XSBench.git'
     tags: ['proxy']
     build_dir: 'XSBench'
     build: {
@@ -115,15 +114,12 @@ XSBench:
         -fsave-optimization-record -save-stats"' ],
         omp: ['cd openmp-threading; make -j CC="clang" OPENMP=yes 
         CFLAGS="-fopenmp -std=gnu99 -Wall -O3 -march=native -fsave-optimization-record -save-stats"' ],
-        omp-offload: [ 'cd openmp-offload; make -j COMPILER=clang
-            CFLAGS="-O3 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -fsave-optimization-record -save-stats";
-            cp XSBench ../openmp-threading/' ]
     }
     copy: [ 'openmp-threading/XSBench' ]
     bin: 'XSBench'
     run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./XSBench'
-    input: '-t 1 -m event -s small'
-    measure: 'Runtime. *(\d+\.\d+) .*seconds' 
+    input: '-t 1 -k 1 -s small'
+    measure:
     clean: [ 'git clean -fx' ]
 
 RSBench:
@@ -139,15 +135,12 @@ RSBench:
         omp: ['cd openmp-threading; make -j CC="clang"
         CFLAGS="-fopenmp -std=gnu99 -Wall -O3 -march=native -fsave-optimization-record -save-stats"
         LDFLAGS="-lm"' ],
-        omp-offload: [ 'cd openmp-offload; make -j COMPILER=clang
-            CFLAGS="-O3 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda -Xopenmp-target -march=sm_70 -fsave-optimization-record -save-stats";
-            cp rsbench ../openmp-threading/' ]
     }
     copy: [ 'openmp-threading/rsbench' ]
     bin: 'rsbench'
     run: 'env OMP_NUM_THREADS=1 OMP_PROC_BIND=true ./rsbench'
-    input: '-s small -m event -t 1'
-    measure: 'Runtime. *(\d+\.\d+) .*seconds' 
+    input: '-t 1 -s small'
+    measure:
     clean: [ 'git clean -fx' ]
 
 SimpleMOC:
@@ -189,14 +182,6 @@ miniFE:
         -DMINIFE_LOCAL_ORDINAL=int -DMINIFE_GLOBAL_ORDINAL=int
         -DMINIFE_CSR_MATRIX -DMINIFE_RESTRICT=__restrict__
         -DMPICH_IGNORE_CXX_SEEK -DMINIFE_INFO=1 -DMINIFE_KERNELS=0"'
-        ],
-        omp-offload: [ 'cd openmp45/src; 
-        make -j CC=clang CXX=clang++ 
-        CFLAGS="-v -O3 -fopenmp -fopenmp-targets=nvptx64-nvidia-cuda 
-        --cuda-path=${CUDA_HOME} -ffp-contract=fast -I. -I../utils 
-        -I../fem -DMINIFE_SCALAR=double -DMINIFE_LOCAL_ORDINAL=int 
-        -DMINIFE_GLOBAL_ORDINAL=int -DMINIFE_CSR_MATRIX  
-        -DMINIFE_INFO=1 -DMINIFE_KERNELS=0"; cp miniFE.x ../../openmp-opt/src/'
         ],
     }
     copy: [ 'openmp-opt/src/miniFE.x' ]
