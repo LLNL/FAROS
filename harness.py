@@ -259,6 +259,9 @@ def compile_and_install(config, program, repo_dir, mode):
     print('Making Build Log Directory...')
     os.makedirs( build_log_dir, exist_ok=True )
 
+    print('Making Results Directory...')
+    os.makedirs( './results', exist_ok=True)
+
     print('Clean...')
     subprocess.run( config[program]['clean'], cwd=build_dir, shell=True)
     print('===> Build...program %s mode %s\n%s' % (program, mode, config[program]['build'][mode]) )
