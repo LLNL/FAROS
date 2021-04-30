@@ -1,3 +1,41 @@
+diff --git a/cuda/io.cu b/cuda/io.cu
+index 26f132f..f4ac121 100644
+--- a/cuda/io.cu
++++ b/cuda/io.cu
+@@ -194,6 +194,13 @@ Input read_CLI( int argc, char * argv[] )
+ 			else
+ 				print_CLI_error();
+ 		}
++        else if( strcmp(arg, "-t") == 0 )
++		{
++			if( ++i < argc )
++				input.nthreads = 1;
++			else
++				print_CLI_error();
++		}
+ 		else
+ 			print_CLI_error();
+ 	}
+diff --git a/openmp-offload/io.c b/openmp-offload/io.c
+index 1c13494..0d04e56 100644
+--- a/openmp-offload/io.c
++++ b/openmp-offload/io.c
+@@ -194,7 +194,14 @@ Input read_CLI( int argc, char * argv[] )
+ 			else
+ 				print_CLI_error();
+ 		}
+-		else
++        else if( strcmp(arg, "-t") == 0 )
++		{
++			if( ++i < argc )
++				input.nthreads = atoi(argv[i]);
++			else
++				print_CLI_error();
++		}
++        else
+ 			print_CLI_error();
+ 	}
+ 
 diff --git a/openmp-threading/io.c b/openmp-threading/io.c
 index dc5201f..a179d97 100644
 --- a/openmp-threading/io.c
