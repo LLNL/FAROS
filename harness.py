@@ -140,14 +140,17 @@ def merge_stats_reports( program, build_dir, mode ):
         with open(filename, 'r') as f:
             fdata = f.read()
 
+        # Fix file paths for HTML output.
         pathname, basename = os.path.split(filename)
         #print('pathname', pathname, 'basename', basename)
-        #print('cwd', os.getcwd())
         # Remove .opt.yaml extension
         basename = basename.split('.')[0]
+        #print('filename', filename, 'basename', basename, 'pathname', pathname)
+        # Replace base filename in the repo with the full path.
         fdata = fdata.replace( 'File: ' + basename, 'File: ' + os.getcwd() + '/' + pathname + '/' + basename)
-        fdata = re.sub('File: \'([^\.])', 'File: \'' + os.path.expanduser('~') + r'/\1', fdata)
-        fdata = fdata.replace( 'File: \'.', 'File: \'' + os.getcwd() + '/' + pathname + '/.')
+        # Replace other filenames with in the repo with the full path.
+        fdata = re.sub('File: ([\.])', 'File: ' + os.getcwd() + '/' + pathname  + r'/\1', fdata)
+
         data += fdata
 
     with open(reports_dir + mode + '.opt.yaml', 'w') as f:
@@ -237,7 +240,7 @@ def diff_reports( report_dir, builds, mode ):
         print('YAML diff optimization report for builds %s|%s mode %s exists'%( builds[0], builds[1], mode ))
 
     if not os.path.exists( out_html ):
-        print('Creating HTML report output diff for %s %s..' % ( builds[0],
+        print('Creating HTML report output diff for %s %s...' % ( builds[0],
             builds[1]) )
         p = subprocess.run( './opt-viewer/opt-viewer.py --output-dir %s %s' %( out_html, out_yaml), shell=True)
         if p.returncode == 0:
