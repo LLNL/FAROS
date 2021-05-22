@@ -65,7 +65,7 @@ class SourceFileRenderer:
         if existing_filename:
             self.source_stream = open(existing_filename)
         else:
-            print('Find file %s failed!'%(existing_filename))
+            print('Find file %s %s failed!'%(filename, existing_filename))
             self.source_stream = None
             print('''
 <html>

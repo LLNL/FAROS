@@ -98,19 +98,6 @@ def run(config, program, reps, dry):
                 with open('./results/results-%s.yaml'%(program), 'w') as f:
                     yaml.dump( results, f )
 
-#def merge_nested_dict(d1, d2):
-#    for k in d1:
-#        if k in d2:
-#            if isinstance(d1[k], dict):
-#                merge_nested_dict(d1[k], d2[k])
-#            else:
-#                if d1[k]:
-#                    d1[k] += d2[k]
-#                else:
-#                    d1[k] = d2[k]
-#            d2.pop(k)
-#    d1.update(d2)
-            
 def show_stats(config, program):
     try:
         with open('./results/results-%s.yaml'%(program), 'r') as f:
@@ -148,13 +135,23 @@ def merge_stats_reports( program, build_dir, mode ):
         #print('filename', filename, 'basename', basename, 'pathname', pathname)
         # Replace base filename in the repo with the full path.
         fdata = fdata.replace( 'File: ' + basename, 'File: ' + os.getcwd() + '/' + pathname + '/' + basename)
+        fdata = fdata.replace( 'File: \'' + basename, 'File: \'' + os.getcwd() + '/' + pathname + '/' + basename)
         # Replace other filenames with in the repo with the full path.
         fdata = re.sub('File: ([\.])', 'File: ' + os.getcwd() + '/' + pathname  + r'/\1', fdata)
+        fdata = re.sub('File: \'([\.])', 'File: \'' + os.getcwd() + '/' + pathname  + r'/\1', fdata)
+        fdata = re.sub('File: \'([^\.\/])', 'File: \'' + os.path.expanduser('~') + r'/\1', fdata)
 
         data += fdata
 
     with open(reports_dir + mode + '.opt.yaml', 'w') as f:
         f.write( data )
+
+    with open(reports_dir + mode + '.opt.yaml', 'r') as f:
+        data = yaml.load_all(f, Loader=CLoader)
+        print('==== data')
+        #for d in data:
+        #    print(d)
+        input('==== end of data')
 
     # merge stats
     filenames = Path(build_dir).rglob('*.stats')
@@ -168,34 +165,17 @@ def merge_stats_reports( program, build_dir, mode ):
     with open(reports_dir + mode  + '.stats.yaml', 'w') as f:
         yaml.dump( data, f, default_flow_style=False )
 
-def merge_omp_info( program, build_dir, mode ):
-    # generate unified optimization report
-    reports_dir = './reports/' + program + '/'
-    os.makedirs( reports_dir, exist_ok=True )
-
-    # merge reports
-    filenames = Path(build_dir).rglob('*.omp.yaml')
-    data = {}
-    for filename in filenames:
-        # Remove .opt.yaml extension
-        with open(filename ,'r') as f:
-            d = yaml.load( f, Loader=CLoader )
-        fname = str(filename).split('.omp.yaml')[0]
-        data[ fname ] = d
-
-    with open(reports_dir + program + '.omp.yaml', 'w') as f:
-        yaml.dump( data, f, default_flow_style=False )
-
 def compile_and_install(config, program, repo_dir, mode):
     build_dir = repo_dir + '/' + config[program]['build_dir']
     bin_dir = './bin/' + program + '/' + mode + '/'
     exe = bin_dir + config[program]['bin']
     # File exists
-    if os.path.isfile( exe ):
-        print('file ' + exe + ' exists')
-        return
+    if os.path.isfile(exe):
+        ans = input('Binary file ' + exe + ' exists, recompile and install (y/n)?\n')
+        if ans.lower() != 'y':
+            return
 
-    os.makedirs( bin_dir, exist_ok=True )
+    os.makedirs(bin_dir, exist_ok=True)
     print('Clean...')
     subprocess.run( config[program]['clean'], cwd=build_dir, shell=True)
     print('===> Build...program %s mode %s\n%s' % (program, mode, config[program]['build'][mode]) )
@@ -208,9 +188,6 @@ def compile_and_install(config, program, repo_dir, mode):
 
     print('Merge stats and reports...')
     merge_stats_reports( program, build_dir, mode )
-    if mode == 'omp':
-        print('Merge OpenMP info...')
-        merge_omp_info( program, build_dir, mode )
 
     print('Copy...')
     for copy in config[program]['copy']:
@@ -220,15 +197,15 @@ def compile_and_install(config, program, repo_dir, mode):
             shutil.copy( build_dir + '/' + copy, bin_dir)
 
 
-def diff_reports( report_dir, builds, mode ):
+def generate_diff_reports( report_dir, builds, mode ):
     out_yaml = report_dir + '%s-%s-%s.opt.yaml'%( builds[0], builds[1], mode )
     out_html = report_dir + 'html-%s-%s-%s'%( builds[0], builds[1], mode )
     if mode == 'all':
-        opt_diff = './opt-viewer/opt-diff.py '
+        opt_diff = './opt-viewer/opt-diff.py -j 1 '
     else:
-        opt_diff = './opt-viewer/opt-diff.py --filter %s '%( mode )
+        opt_diff = './opt-viewer/opt-diff.py -j 1 --filter %s '%( mode )
 
-    if not os.path.exists( out_yaml ):
+    def generate_diff_yaml():
         print('Creating diff remark YAML files...')
         p = subprocess.run( opt_diff  + '--output ' + out_yaml + ' %s/%s.opt.yaml %s/%s.opt.yaml'%\
                 (report_dir, builds[0], report_dir, builds[1]), shell=True)
@@ -236,47 +213,62 @@ def diff_reports( report_dir, builds, mode ):
             print('Done generating YAML diff optimization report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
         else:
             print('Failed generating YAML diff optimization report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
-    else:
-        print('YAML diff optimization report for builds %s|%s mode %s exists'%( builds[0], builds[1], mode ))
 
-    if not os.path.exists( out_html ):
+    def generate_diff_html():
         print('Creating HTML report output diff for %s %s...' % ( builds[0],
             builds[1]) )
-        p = subprocess.run( './opt-viewer/opt-viewer.py --output-dir %s %s' %( out_html, out_yaml), shell=True)
+        p = subprocess.run( './opt-viewer/opt-viewer.py -j 1 --output-dir %s %s' %( out_html, out_yaml), shell=True)
         if p.returncode == 0:
             print('Done generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
         else:
             print('Failed generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
-    else:
-        print('HTML output for builds %s|%s mode %s exists'%( builds[0], builds[1], mode ))
 
+
+    if os.path.exists(out_yaml):
+        ans = input('Optimization remark YAML files already found from previous build, regenerate (y/n)?\n')
+        if ans.lower() == 'y':
+            generate_diff_yaml()
+    else:
+        generate_diff_yaml()
+
+    if os.path.exists(out_html):
+        ans = input('HTML output for builds %s|%s mode %s already exists, regenerate (y/n)?\n'%( builds[0], builds[1], mode ))
+        if ans.lower() == 'y':
+            generate_diff_html()
+    else:
+        generate_diff_html()
 
 def generate_remark_reports( config, program ):
     report_dir = './reports/' + program + '/'
+
+    def generate_html():
+        print('Creating HTML report output for build %s ...' % ( build ) )
+        p = subprocess.run( './opt-viewer/opt-viewer.py -j 1 --output-dir %s %s' %(
+            out_html, in_yaml), shell=True)
+        if p.returncode == 0:
+            print('Done generating compilation reports!')
+        else:
+            print('Failed generating compilation reports (expects build was '\
+                    'successful)')
 
     # Create reports for single build (no diff).
     for build in config[program]['build']:
         in_yaml = report_dir + '%s.opt.yaml'%( build )
         out_html = report_dir + 'html-%s'%( build )
-        if not os.path.exists( out_html ):
-            print('Creating HTML report output for build %s ...' % ( build ) )
-            p = subprocess.run( './opt-viewer/opt-viewer.py --output-dir %s %s' %(
-                out_html, in_yaml), shell=True)
-            if p.returncode == 0:
-                print('Done generating compilation reports!')
-            else:
-                print('Failed generating compilation reports (expects build was '\
-                        'successful)')
+        if os.path.exists( out_html ):
+            ans = input('HTML output for build %s exists, regenerate (y/n)?\n'%(build))
+            if ans.lower() == 'y':
+                generate_html()
         else:
-            print('HTML output for build %s exists'%( build ))
+            generate_html()
 
     # Create repors for 2-combinations of build options.
     combos = itertools.combinations( config[program]['build'], 2 )
     for builds in combos:
-        diff_reports( report_dir, builds, 'all' )
-        diff_reports( report_dir, builds, 'analysis' )
-        diff_reports( report_dir, builds, 'missed' )
-        diff_reports( report_dir, builds, 'passed' )
+        generate_diff_reports( report_dir, builds, 'all' )
+        generate_diff_reports( report_dir, builds, 'analysis' )
+        generate_diff_reports( report_dir, builds, 'missed' )
+        generate_diff_reports( report_dir, builds, 'passed' )
 
 def fetch(config, program):
     # directories
@@ -287,8 +279,10 @@ def fetch(config, program):
     subprocess.run( config[program]['fetch'], cwd=repo_dir, shell=True)
 
 def build(config, program):
-    fetch(config, program)
     repo_dir = './repos/'
+    build_dir = repo_dir + '/' + config[program]['build_dir']
+    if not os.path.exists(build_dir):
+        fetch(config, program)
 
     # build
     for b in config[program]['build']:
