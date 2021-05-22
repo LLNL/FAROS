@@ -21,11 +21,36 @@ import os
 import shutil
 import time
 import re
-import sys
 import numpy as np
 from pathlib import Path
 import itertools
 import math
+import sys
+
+# Enable importing modules from opt-viewer
+sys.path.append('./opt-viewer')
+import optrecord
+import optviewer
+
+def invoke_optviewer(filelist, output_html_dir, jobs, print_progress):
+    all_remarks, file_remarks, should_display_hotness = \
+                optrecord.gather_results(
+                        filelist,           # filelist
+                        1,                  # num jobs
+                        print_progress)     # print progress
+
+    optviewer.map_remarks(all_remarks)
+
+    optviewer.generate_report(all_remarks,
+                file_remarks,
+                '',                                 # source dir
+                output_html_dir,                    # output dir
+                False,                              # no highlight
+                should_display_hotness,
+                100,                                # max hottest remarks in index
+                1,                                  # number of jobs
+                print_progress)                     # print progress
+
 
 def run(config, program, reps, dry):
     print('Launching program', program, 'with modes', config[program]['build'])
@@ -199,7 +224,7 @@ def compile_and_install(config, program, repo_dir, mode):
 
 def generate_diff_reports( report_dir, builds, mode ):
     out_yaml = report_dir + '%s-%s-%s.opt.yaml'%( builds[0], builds[1], mode )
-    out_html = report_dir + 'html-%s-%s-%s'%( builds[0], builds[1], mode )
+    output_html_dir = report_dir + 'html-%s-%s-%s'%( builds[0], builds[1], mode )
     if mode == 'all':
         opt_diff = './opt-viewer/opt-diff.py -j 1 '
     else:
@@ -215,14 +240,16 @@ def generate_diff_reports( report_dir, builds, mode ):
             print('Failed generating YAML diff optimization report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
 
     def generate_diff_html():
-        print('Creating HTML report output diff for %s %s...' % ( builds[0],
-            builds[1]) )
-        p = subprocess.run( './opt-viewer/opt-viewer.py -j 1 --output-dir %s %s' %( out_html, out_yaml), shell=True)
-        if p.returncode == 0:
-            print('Done generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
-        else:
+        print('Creating HTML report output diff for %s|%s...' % ( builds[0], builds[1]) )
+        try:
+            invoke_optviewer(
+                    [out_yaml],
+                    output_html_dir,
+                    1,
+                    True)
+        except:
             print('Failed generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
-
+        print('Done generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
 
     if os.path.exists(out_yaml):
         ans = input('Optimization remark YAML files already found from previous build, regenerate (y/n)?\n')
@@ -231,7 +258,7 @@ def generate_diff_reports( report_dir, builds, mode ):
     else:
         generate_diff_yaml()
 
-    if os.path.exists(out_html):
+    if os.path.exists(output_html_dir):
         ans = input('HTML output for builds %s|%s mode %s already exists, regenerate (y/n)?\n'%( builds[0], builds[1], mode ))
         if ans.lower() == 'y':
             generate_diff_html()
@@ -243,19 +270,22 @@ def generate_remark_reports( config, program ):
 
     def generate_html():
         print('Creating HTML report output for build %s ...' % ( build ) )
-        p = subprocess.run( './opt-viewer/opt-viewer.py -j 1 --output-dir %s %s' %(
-            out_html, in_yaml), shell=True)
-        if p.returncode == 0:
-            print('Done generating compilation reports!')
-        else:
+        try:
+            invoke_optviewer(
+                    [in_yaml],
+                    output_html_dir,
+                    1,
+                    True)
+        except:
             print('Failed generating compilation reports (expects build was '\
                     'successful)')
+        print('Done generating compilation reports!')
 
     # Create reports for single build (no diff).
     for build in config[program]['build']:
         in_yaml = report_dir + '%s.opt.yaml'%( build )
-        out_html = report_dir + 'html-%s'%( build )
-        if os.path.exists( out_html ):
+        output_html_dir = report_dir + 'html-%s'%( build )
+        if os.path.exists(output_html_dir):
             ans = input('HTML output for build %s exists, regenerate (y/n)?\n'%(build))
             if ans.lower() == 'y':
                 generate_html()
