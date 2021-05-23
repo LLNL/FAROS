@@ -27,6 +27,40 @@ import optrecord
 import argparse
 from collections import defaultdict
 
+def generate_diff(yaml_dir_or_file_1, yaml_dir_or_file_2, print_progress, jobs, filter_only, max_size, output):
+    files1 = optrecord.find_opt_files(yaml_dir_or_file_1)
+    files2 = optrecord.find_opt_files(yaml_dir_or_file_2)
+
+    all_remarks1, _, _ = optrecord.gather_results(files1, jobs, print_progress)
+    all_remarks2, _, _ = optrecord.gather_results(files2, jobs, print_progress)
+
+    if filter_only:
+        if filter_only.lower() == 'missed':
+            all_remarks1 = { r:all_remarks1[r] for r in all_remarks1 if r[0] == optrecord.Missed }
+            all_remarks2 = { r:all_remarks2[r] for r in all_remarks2 if r[0] == optrecord.Missed }
+        elif filter_only.lower() == 'analysis':
+            all_remarks1 = { r:all_remarks1[r] for r in all_remarks1 if r[0] == optrecord.Analysis }
+            all_remarks2 = { r:all_remarks2[r] for r in all_remarks2 if r[0] == optrecord.Analysis }
+        elif filter_only.lower() == 'passed':
+            all_remarks1 = { r:all_remarks1[r] for r in all_remarks1 if r[0] == optrecord.Passed }
+            all_remarks2 = { r:all_remarks2[r] for r in all_remarks2 if r[0] == optrecord.Passed }
+
+    added = set(all_remarks2.values()) - set(all_remarks1.values())
+    removed = set(all_remarks1.values()) - set(all_remarks2.values())
+
+    for r in added:
+        r.Added = True
+    for r in removed:
+        r.Added = False
+
+    result = list(added | removed)
+    for r in result:
+        r.recover_yaml_structure()
+
+    for i in range(0, len(result), max_size):
+        with open(output.format(i / max_size), 'w') as stream:
+            yaml.dump_all(result[i:i + max_size], stream)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument(
@@ -56,44 +90,18 @@ if __name__ == '__main__':
         default=False,
         help='Do not display any indicator of how many YAML files were read.')
     parser.add_argument(
-            '--filter',
+            '--filter-only',
             '-f',
             choices=['Missed', 'missed', 'Analysis', 'analysis', 'Passed', 'passed'],
             help='Filter out optimization remarks based on type')
     parser.add_argument('--output', '-o', default='diff{}.opt.yaml')
     args = parser.parse_args()
 
-    files1 = optrecord.find_opt_files(args.yaml_dir_or_file_1)
-    files2 = optrecord.find_opt_files(args.yaml_dir_or_file_2)
-
-    print_progress = not args.no_progress_indicator
-    all_remarks1, _, _ = optrecord.gather_results(files1, args.jobs, print_progress)
-    all_remarks2, _, _ = optrecord.gather_results(files2, args.jobs, print_progress)
-
-    print('args.filter', args.filter)
-    if args.filter:
-        if args.filter.lower() == 'missed':
-            all_remarks1 = { r:all_remarks1[r] for r in all_remarks1 if r[0] == optrecord.Missed }
-            all_remarks2 = { r:all_remarks2[r] for r in all_remarks2 if r[0] == optrecord.Missed }
-        elif args.filter.lower() == 'analysis':
-            all_remarks1 = { r:all_remarks1[r] for r in all_remarks1 if r[0] == optrecord.Analysis }
-            all_remarks2 = { r:all_remarks2[r] for r in all_remarks2 if r[0] == optrecord.Analysis }
-        elif args.filter.lower() == 'passed':
-            all_remarks1 = { r:all_remarks1[r] for r in all_remarks1 if r[0] == optrecord.Passed }
-            all_remarks2 = { r:all_remarks2[r] for r in all_remarks2 if r[0] == optrecord.Passed }
-
-    added = set(all_remarks2.values()) - set(all_remarks1.values())
-    removed = set(all_remarks1.values()) - set(all_remarks2.values())
-
-    for r in added:
-        r.Added = True
-    for r in removed:
-        r.Added = False
-
-    result = list(added | removed)
-    for r in result:
-        r.recover_yaml_structure()
-
-    for i in range(0, len(result), args.max_size):
-        with open(args.output.format(i / args.max_size), 'w') as stream:
-            yaml.dump_all(result[i:i + args.max_size], stream)
+    generate_diff(
+            args.yaml_dir_or_file_1,
+            args.yaml_dir_or_file_2,
+            not args.no_progress_indicator,
+            args.jobs,
+            args.filter,
+            args.max_size,
+            args.output)

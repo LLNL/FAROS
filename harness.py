@@ -31,6 +31,7 @@ import sys
 sys.path.append('./opt-viewer')
 import optrecord
 import optviewer
+import optdiff
 
 def invoke_optviewer(filelist, output_html_dir, jobs, print_progress):
     all_remarks, file_remarks, should_display_hotness = \
@@ -51,6 +52,15 @@ def invoke_optviewer(filelist, output_html_dir, jobs, print_progress):
                 1,                                  # number of jobs
                 print_progress)                     # print progress
 
+def invoke_optdiff(yaml_file_1, yaml_file_2, filter_only, out_yaml):
+    optdiff.generate_diff(
+            yaml_file_1,    # yaml file 1
+            yaml_file_2,    # yaml file 2
+            True,           # print progress
+            1,              # num jobs
+            filter_only,    # filter remarks
+            100000,         # max remarks
+            out_yaml)       # output yaml
 
 def run(config, program, reps, dry):
     print('Launching program', program, 'with modes', config[program]['build'])
@@ -225,18 +235,22 @@ def compile_and_install(config, program, repo_dir, mode):
 def generate_diff_reports( report_dir, builds, mode ):
     out_yaml = report_dir + '%s-%s-%s.opt.yaml'%( builds[0], builds[1], mode )
     output_html_dir = report_dir + 'html-%s-%s-%s'%( builds[0], builds[1], mode )
-    if mode == 'all':
-        opt_diff = './opt-viewer/opt-diff.py -j 1 '
-    else:
-        opt_diff = './opt-viewer/opt-diff.py -j 1 --filter %s '%( mode )
 
     def generate_diff_yaml():
         print('Creating diff remark YAML files...')
-        p = subprocess.run( opt_diff  + '--output ' + out_yaml + ' %s/%s.opt.yaml %s/%s.opt.yaml'%\
-                (report_dir, builds[0], report_dir, builds[1]), shell=True)
-        if p.returncode == 0:
-            print('Done generating YAML diff optimization report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
+        if mode == 'all':
+            filter_only = None
         else:
+            filter_only = mode
+
+        try:
+            invoke_optdiff(
+                    '%s/%s.opt.yaml'%(report_dir, builds[0]),
+                    '%s/%s.opt.yaml'%(report_dir, builds[1]),
+                    filter_only,
+                    out_yaml)
+            print('Done generating YAML diff optimization report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
+        except:
             print('Failed generating YAML diff optimization report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
 
     def generate_diff_html():
@@ -247,12 +261,12 @@ def generate_diff_reports( report_dir, builds, mode ):
                     output_html_dir,
                     1,
                     True)
+            print('Done generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
         except:
             print('Failed generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
-        print('Done generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
 
     if os.path.exists(out_yaml):
-        ans = input('Optimization remark YAML files already found from previous build, regenerate (y/n)?\n')
+        ans = input('Optimization remark YAML files for builds %s|%s already found from previous build, regenerate (y/n)?\n'%(builds[0], builds[1]))
         if ans.lower() == 'y':
             generate_diff_yaml()
     else:
@@ -276,10 +290,10 @@ def generate_remark_reports( config, program ):
                     output_html_dir,
                     1,
                     True)
+            print('Done generating compilation reports!')
         except:
             print('Failed generating compilation reports (expects build was '\
                     'successful)')
-        print('Done generating compilation reports!')
 
     # Create reports for single build (no diff).
     for build in config[program]['build']:
