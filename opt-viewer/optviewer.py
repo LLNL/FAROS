@@ -153,11 +153,11 @@ class SourceFileRenderer:
 <table class="source">
 <thead>
 <tr>
-<th style="width: 2%">Line</td>
-<th style="width: 3%">Hotness</td>
-<th style="width: 10%">Optimization</td>
-<th style="width: 70%">Source</td>
-<th style="width: 15%">Inline Context</td>
+<th>Line</td>
+<th>Hotness</td>
+<th>Optimization</td>
+<th>Source</td>
+<th>Inline Context</td>
 </tr>
 </thead>
 <tbody>'''.format(os.path.basename(self.filename)), file=self.stream)
