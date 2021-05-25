@@ -183,10 +183,6 @@ def merge_stats_reports( program, build_dir, mode ):
 
     with open(reports_dir + mode + '.opt.yaml', 'r') as f:
         data = yaml.load_all(f, Loader=CLoader)
-        print('==== data')
-        #for d in data:
-        #    print(d)
-        input('==== end of data')
 
     # merge stats
     filenames = Path(build_dir).rglob('*.stats')
@@ -218,7 +214,6 @@ def compile_and_install(config, program, repo_dir, mode):
         subprocess.run( config[program]['build'][mode], cwd=build_dir, shell=True )
     except Exception as e:
         print('building %s mode %s failed'%(program, mode), e)
-        input('key...')
         sys.exit(1)
 
     print('Merge stats and reports...')
