@@ -26,6 +26,8 @@ from pygments.formatters import HtmlFormatter
 import optpmap
 import optrecord
 
+import yaml
+from yaml import CLoader
 
 desc = '''Generate HTML output to visualize optimization records from the YAML files
 generated with -fsave-optimization-record and -fdiagnostics-show-hotness.
@@ -48,8 +50,23 @@ def suppress(remark):
         return remark.getArgDict()['Callee'][0].startswith(('\"Swift.', '\"specialized Swift.'))
     return False
 
+
+def get_hotness_lines(output_dir, builds):
+    perf_hotness = {}
+    for build in builds:
+        perf_hotness_path = os.path.join(output_dir, '..', "{}.lines_hotness.yaml".format(build))
+        f = open(perf_hotness_path)
+        try:
+            hotness_dict = yaml.load(f, Loader=CLoader)
+        except Exception as e:
+            print(e)
+        perf_hotness[build] = hotness_dict
+        f.close()
+    return perf_hotness
+
+
 class SourceFileRenderer:
-    def __init__(self, source_dir, output_dir, filename, no_highlight):
+    def __init__(self, source_dir, output_dir, filename, no_highlight, builds=[]):
         self.filename = filename
         existing_filename = None
         #print('filename', filename) #ggout
@@ -75,6 +92,9 @@ class SourceFileRenderer:
 
         self.html_formatter = HtmlFormatter(encoding='utf-8')
         self.cpp_lexer = CppLexer(stripnl=False)
+        self.builds = builds
+        # We assume that we comparison is between each pair of builds
+        self.perf_hotness = get_hotness_lines(output_dir, builds)
 
     def render_source_lines(self, stream, line_remarks):
         file_text = stream.read()
@@ -103,13 +123,19 @@ class SourceFileRenderer:
             html_highlighted = html_highlighted.replace('</pre></div>', '')
 
         for (linenum, html_line) in enumerate(html_highlighted.split('\n'), start=1):
-            print(u'''
+            html_src_line = u'''
 <tr>
 <td><a name=\"L{linenum}\">{linenum}</a></td>
-<td></td>
-<td></td>
+<td></td>'''.format(**locals())
+            # add place holder for every hotness
+            for _ in range(len(self.builds)):
+                html_src_line += u'''
+<td></td>'''
+            html_src_line += u'''
 <td><div class="highlight"><pre>{html_line}</pre></div></td>
-</tr>'''.format(**locals()), file=self.stream)
+</tr>'''.format(**locals())
+            print(html_src_line, file=self.stream)
+
 
             for remark in line_remarks.get(linenum, []):
                 if not suppress(remark):
@@ -128,20 +154,28 @@ class SourceFileRenderer:
         indent = line[:max(r.Column, 1) - 1]
         indent = re.sub('\S', ' ', indent)
 
-        print(u'''
+        entery = u'''
 <tr>
-<td></td>
-<td>{r.RelativeHotness}</td>
+<td></td>'''
+        for build in self.perf_hotness:
+            file_name, line_num, column = r.DebugLocString.split(':')
+            file_and_line = file_name + ':' + line_num
+            entery_hotness = 0 if file_and_line not in self.perf_hotness[build] else self.perf_hotness[build][
+                file_and_line]
+            entery_hotness = "{:.3f}%".format(entery_hotness)
+            entery += u'''
+<td>{entery_hotness}</td>'''.format(**locals())
+        entery += u'''
 <td class=\"column-entry-{r.color}\">{r.PassWithDiffPrefix}</td>
 <td><pre style="display:inline">{indent}</pre><span class=\"column-entry-yellow\"> {r.message}&nbsp;</span></td>
 <td class=\"column-entry-yellow\">{inlining_context}</td>
-</tr>'''.format(**locals()), file=self.stream)
+</tr>'''.format(**locals())
+        print(entery, file=self.stream)
 
     def render(self, line_remarks):
         if not self.source_stream:
             return
-
-        print('''
+        header1 = u'''
 <html>
 <title>{}</title>
 <meta charset="utf-8" />
@@ -153,14 +187,18 @@ class SourceFileRenderer:
 <table class="source">
 <thead>
 <tr>
-<th>Line</td>
-<th>Hotness</td>
+<th>Line</td>'''.format(os.path.basename(self.filename))
+        for build in self.perf_hotness:
+            header1 += u'''
+<th>{} Perf Hotness</td>'''.format(build)
+        header1 += u'''
 <th>Optimization</td>
 <th>Source</td>
 <th>Inline Context</td>
 </tr>
 </thead>
-<tbody>'''.format(os.path.basename(self.filename)), file=self.stream)
+<tbody>'''
+        print(header1, file=self.stream)
         self.render_source_lines(self.source_stream, line_remarks)
 
         print('''
@@ -171,23 +209,49 @@ class SourceFileRenderer:
 
 
 class IndexRenderer:
-    def __init__(self, output_dir, should_display_hotness, max_hottest_remarks_on_index):
+    def __init__(self, output_dir, should_display_hotness, max_hottest_remarks_on_index, builds=[]):
         self.stream = codecs.open(os.path.join(output_dir, 'index.html'), 'w', encoding='utf-8')
         self.should_display_hotness = should_display_hotness
         self.max_hottest_remarks_on_index = max_hottest_remarks_on_index
 
+        self.builds = builds
+        # We assume that we comparison is between each pair of builds
+        self.perf_hotness = get_hotness_lines(output_dir, builds)
+
     def render_entry(self, r, odd):
         escaped_name = html.escape(r.DemangledFunctionName)
-        print(u'''
+        # we assume that omp has +ve sign before
+        # file_name,line_num,column=r.DebugLocString.split(':')
+        # print(file_name,line_num,column)
+        # file_and_line=file_name+':'+line_num
+        # if perf_render_mode is None:
+        #    perf_hotness=''
+        # elif perf_render_mode == "omp" or (perf_render_mode == "all" and r.PassWithDiffPrefix[0] == "+"):
+        #    perf_hotness = self.perf_hotness_omp
+        entery = u'''
 <tr>
-<td class=\"column-entry-{odd}\"><a href={r.Link}>{r.DebugLocString}</a></td>
-<td class=\"column-entry-{odd}\">{r.RelativeHotness}</td>
+<td class=\"column-entry-{odd}\"><a href={r.Link}>{r.DebugLocString}</a></td>'''.format(**locals())
+
+        # add perf hotness for each build
+        for build in self.perf_hotness:
+            file_name, line_num, column = r.DebugLocString.split(':')
+            file_and_line = file_name + ':' + line_num
+            entery_hotness = 0 if file_and_line not in self.perf_hotness[build] else self.perf_hotness[build][
+                file_and_line]
+            entery_hotness = "{:.3f}%".format(entery_hotness)
+            entery += u'''
+<td class=\"column-entry-{odd}\">{entery_hotness}</td>'''.format(**locals())
+
+        # continue entery
+        entery += u'''
 <td class=\"column-entry-{odd}\">{escaped_name}</td>
 <td class=\"column-entry-{r.color}\">{r.PassWithDiffPrefix}</td>
-</tr>'''.format(**locals()), file=self.stream)
+</tr>'''.format(**locals())
+        # print('entery in render entery:',entery)
+        print(entery, file=self.stream)
 
     def render(self, all_remarks):
-        print('''
+        header = u'''
 <html>
 <meta charset="utf-8" />
 <head>
@@ -197,11 +261,17 @@ class IndexRenderer:
 <div class="centered">
 <table>
 <tr>
-<td>Source Location</td>
-<td>Hotness</td>
-<td>Function</td>
+<td>Source Location</td>'''
+        # print('header is now: ',header)
+        for build in self.perf_hotness:
+            header += u'''
+<td>{} perf Hotness</td>'''.format(build)
+            # print('header is now: ',header)
+        header += u'''<td>Function</td>
 <td>Pass</td>
-</tr>''', file=self.stream)
+</tr>'''
+        # print('header in index rendered:',header)
+        print(header, file=self.stream)
 
         max_entries = None
         if self.should_display_hotness:
@@ -216,11 +286,11 @@ class IndexRenderer:
 </html>''', file=self.stream)
 
 
-def _render_file(source_dir, output_dir, ctx, no_highlight, entry):
+def _render_file(source_dir, output_dir, ctx, no_highlight, builds, entry):
     global context
     context = ctx
     filename, remarks = entry
-    SourceFileRenderer(source_dir, output_dir, filename, no_highlight).render(remarks)
+    SourceFileRenderer(source_dir, output_dir, filename, no_highlight, builds).render(remarks)
 
 
 def map_remarks(all_remarks):
@@ -246,7 +316,8 @@ def generate_report(all_remarks,
                     should_display_hotness,
                     max_hottest_remarks_on_index,
                     num_jobs,
-                    should_print_progress):
+                    should_print_progress,
+                    builds=[]):
     try:
         os.makedirs(output_dir)
     except OSError as e:
@@ -261,12 +332,12 @@ def generate_report(all_remarks,
         sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.Hotness, r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function), reverse=True)
     else:
         sorted_remarks = sorted(optrecord.itervalues(all_remarks), key=lambda r: (r.File, r.Line, r.Column, r.PassWithDiffPrefix, r.yaml_tag, r.Function))
-    IndexRenderer(output_dir, should_display_hotness, max_hottest_remarks_on_index).render(sorted_remarks)
+    IndexRenderer(output_dir, should_display_hotness, max_hottest_remarks_on_index, builds).render(sorted_remarks)
 
     shutil.copy(os.path.join(os.path.dirname(os.path.realpath(__file__)),
             "style.css"), output_dir)
 
-    _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context, no_highlight)
+    _render_file_bound = functools.partial(_render_file, source_dir, output_dir, context, no_highlight, builds)
     if should_print_progress:
         print('Rendering HTML files...')
     optpmap.pmap(_render_file_bound,

@@ -17,6 +17,7 @@ import yaml
 from yaml import CLoader
 import argparse
 import subprocess
+from subprocess import PIPE
 import os
 import shutil
 import time
@@ -33,13 +34,16 @@ import optrecord
 import optviewer
 import optdiff
 
-def invoke_optviewer(filelist, output_html_dir, jobs, print_progress):
+from hotness import *
+
+
+def invoke_optviewer(filelist, output_html_dir, jobs, print_progress, builds=[]):
     all_remarks, file_remarks, should_display_hotness = \
                 optrecord.gather_results(
                         filelist,           # filelist
                         1,                  # num jobs
                         print_progress)     # print progress
-
+    print('generating opt viewers for builds', builds)
     optviewer.map_remarks(all_remarks)
 
     optviewer.generate_report(all_remarks,
@@ -50,7 +54,9 @@ def invoke_optviewer(filelist, output_html_dir, jobs, print_progress):
                 should_display_hotness,
                 100,                                # max hottest remarks in index
                 1,                                  # number of jobs
-                print_progress)                     # print progress
+                print_progress,                     # print progress
+                builds, )
+
 
 def invoke_optdiff(yaml_file_1, yaml_file_2, filter_only, out_yaml):
     optdiff.generate_diff(
@@ -62,11 +68,12 @@ def invoke_optdiff(yaml_file_1, yaml_file_2, filter_only, out_yaml):
             100000,         # max remarks
             out_yaml)       # output yaml
 
-def run(config, program, reps, dry):
+def run(config, program, reps, dry, with_perf):
     print('Launching program', program, 'with modes', config[program]['build'])
-    exe = config[program]['run'] + ' ' + config[program]['input']
-    os.makedirs( './results', exist_ok=True)
-    results = { program: {} }
+    perf_command = 'perf record --freq=100000 -o perf.data' if with_perf else ''
+    exe = config[program]['env'] + ' ' + perf_command + ' ' + config[program]['run'] + ' ' + config[program]['input']
+    os.makedirs('./results', exist_ok=True)
+    results = {program: {}}
     try:
         with open('./results/results-%s.yaml'%(program), 'r') as f:
             results = yaml.load(f, Loader=CLoader)
@@ -97,18 +104,21 @@ def run(config, program, reps, dry):
             for i in range(start, reps):
                 print('path', bin_dir, 'exe',exe)
                 t1 = time.perf_counter()
-                p = subprocess.run( exe, capture_output=True, cwd=bin_dir, shell=True )
-                out = str(p.stdout.decode('utf-8'))
-                err = str(p.stderr.decode('utf-8'))
+                # p = subprocess.run( exe, capture_output=True, cwd=bin_dir, shell=True )
+                p = subprocess.run(exe, cwd=bin_dir, shell=True, stdout=PIPE, stderr=PIPE)
+                out = str(p.stdout.decode('utf-8', errors='ignore'))
+                err = str(p.stderr.decode('utf-8', errors='ignore'))
+                # out=str(p.stdout)
+                # err=str(p.stderr)
                 output = out + err
                 print(output)
-                #print('Out', p.stdout.decode('utf-8') )
-                #print('Err', p.stderr.decode('utf-8') )
-                with open('%s/stdout-%d.txt'%(bin_dir, i), 'w') as f:
-                    f.write(p.stdout.decode('utf-8'));
-                with open('%s/stderr-%d.txt'%(bin_dir, i), 'w') as f:
-                    f.write(p.stderr.decode('utf-8'));
-
+                # print('Out', p.stdout.decode('utf-8') )
+                # print('Err', p.stderr.decode('utf-8') )
+                with open('%s/stdout-%d.txt' % (bin_dir, i), 'w') as f:
+                    f.write(p.stdout.decode('latin-1', errors='replace'));
+                with open('%s/stderr-%d.txt' % (bin_dir, i), 'w') as f:
+                    f.write(p.stderr.decode('latin-1', errors='replace'));
+                output = ''
                 if p.returncode != 0:
                     print('ERROR running', program, 'in', mode)
                     sys.exit(p.returncode)
@@ -132,6 +142,15 @@ def run(config, program, reps, dry):
 
                 with open('./results/results-%s.yaml'%(program), 'w') as f:
                     yaml.dump( results, f )
+        # if we run with perf, we generate the report
+        if with_perf:
+            hotlines = get_hot_lines_percentage(config[program]['bin'], bin_dir)
+            reports_dir = './reports/' + program
+            lines_hotness_path = os.path.join(reports_dir, '{}.lines_hotness.yaml'.format(mode))
+            print('WRITING HOTNESS OF SRC CODE LINES TO:', lines_hotness_path)
+            with open(lines_hotness_path, 'w') as f:
+                yaml.dump(hotlines, f)
+
 
 def show_stats(config, program):
     try:
@@ -227,9 +246,10 @@ def compile_and_install(config, program, repo_dir, mode):
             shutil.copy( build_dir + '/' + copy, bin_dir)
 
 
-def generate_diff_reports( report_dir, builds, mode ):
+def generate_diff_reports(report_dir, builds, mode, with_perf):
     out_yaml = report_dir + '%s-%s-%s.opt.yaml'%( builds[0], builds[1], mode )
     output_html_dir = report_dir + 'html-%s-%s-%s'%( builds[0], builds[1], mode )
+    build_for_hotness = builds if with_perf else []
 
     def generate_diff_yaml():
         print('Creating diff remark YAML files...')
@@ -255,7 +275,8 @@ def generate_diff_reports( report_dir, builds, mode ):
                     [out_yaml],
                     output_html_dir,
                     1,
-                    True)
+                    True,
+                    build_for_hotness)
             print('Done generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
         except:
             print('Failed generating compilation report for builds %s|%s mode %s'%( builds[0], builds[1], mode ))
@@ -274,17 +295,20 @@ def generate_diff_reports( report_dir, builds, mode ):
     else:
         generate_diff_html()
 
-def generate_remark_reports( config, program ):
+
+def generate_remark_reports(config, program, with_perf):
     report_dir = './reports/' + program + '/'
 
     def generate_html():
         print('Creating HTML report output for build %s ...' % ( build ) )
+        build_for_hotness = [build] if with_perf else []
         try:
             invoke_optviewer(
                     [in_yaml],
                     output_html_dir,
                     1,
-                    True)
+                    True,
+                build_for_hotness)
             print('Done generating compilation reports!')
         except:
             print('Failed generating compilation reports (expects build was '\
@@ -304,10 +328,11 @@ def generate_remark_reports( config, program ):
     # Create repors for 2-combinations of build options.
     combos = itertools.combinations( config[program]['build'], 2 )
     for builds in combos:
-        generate_diff_reports( report_dir, builds, 'all' )
-        generate_diff_reports( report_dir, builds, 'analysis' )
-        generate_diff_reports( report_dir, builds, 'missed' )
-        generate_diff_reports( report_dir, builds, 'passed' )
+        generate_diff_reports( report_dir, builds, 'all', with_perf )
+        generate_diff_reports( report_dir, builds, 'analysis', with_perf )
+        generate_diff_reports( report_dir, builds, 'missed', with_perf )
+        generate_diff_reports( report_dir, builds, 'passed', with_perf )
+
 
 def fetch(config, program):
     # directories
@@ -340,6 +365,7 @@ def main():
     parser.add_argument('-s', '--stats', dest='stats', action='store_true', help='show run statistics')
     parser.add_argument('-d', '--dry-run', dest='dry', action='store_true', help='enable dry run')
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', help='verbose printing')
+    parser.add_argument('-pc', '--perf', dest='perf', action='store_true', help='use perf')
     args = parser.parse_args()
 
     with open(args.input, 'r') as f:
@@ -353,6 +379,7 @@ def main():
         print('args.build', args.build)
         print('args.run', args.run)
         print('args.generate', args.generate)
+        print('args.perf', args.perf)
 
     programs = []
     if args.programs:
@@ -369,9 +396,9 @@ def main():
         if args.build:
             build( config, p )
         if args.run:
-            run( config, p, args.run, args.dry )
+            run( config, p, args.run, args.dry, args.perf )
         if args.generate:
-            generate_remark_reports( config, p )
+            generate_remark_reports( config, p, args.perf )
         if args.stats:
             show_stats( config, p)
 
