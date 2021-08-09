@@ -65,7 +65,7 @@ class SourceFileRenderer:
         if existing_filename:
             self.source_stream = open(existing_filename)
         else:
-            print('Find file %s failed!'%(existing_filename))
+            print('Find file %s %s failed!'%(filename, existing_filename))
             self.source_stream = None
             print('''
 <html>
@@ -153,11 +153,11 @@ class SourceFileRenderer:
 <table class="source">
 <thead>
 <tr>
-<th style="width: 2%">Line</td>
-<th style="width: 3%">Hotness</td>
-<th style="width: 10%">Optimization</td>
-<th style="width: 70%">Source</td>
-<th style="width: 15%">Inline Context</td>
+<th>Line</td>
+<th>Hotness</td>
+<th>Optimization</td>
+<th>Source</td>
+<th>Inline Context</td>
 </tr>
 </thead>
 <tbody>'''.format(os.path.basename(self.filename)), file=self.stream)
