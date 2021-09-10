@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 
+#
 # Based on LLVM tools opt-viewer under license
 # SPDX-License-Identifier: "Apache-2.0 WITH LLVM-exception"
 #
@@ -30,7 +30,7 @@ try:
 except:
     pass
 
-import optpmap
+from libs.optlib import optpmap
 
 try:
     dict.iteritems

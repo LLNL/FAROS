@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 
+#
 # Based on LLVM tools opt-viewer under license
 # SPDX-License-Identifier: "Apache-2.0 WITH LLVM-exception"
 #
@@ -23,7 +23,7 @@ try:
 except ImportError:
     from yaml import Loader
 
-import optrecord
+from libs.optlib import optrecord
 import argparse
 from collections import defaultdict
 
