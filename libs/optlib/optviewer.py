@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# 
+#
 # Based on LLVM tools opt-viewer under license
 # SPDX-License-Identifier: "Apache-2.0 WITH LLVM-exception"
 #
@@ -23,8 +23,8 @@ from pygments import highlight
 from pygments.lexers.c_cpp import CppLexer
 from pygments.formatters import HtmlFormatter
 
-import optpmap
-import optrecord
+from libs.optlib import optpmap
+from libs.optlib import optrecord
 
 
 desc = '''Generate HTML output to visualize optimization records from the YAML files
@@ -65,7 +65,7 @@ class SourceFileRenderer:
         if existing_filename:
             self.source_stream = open(existing_filename)
         else:
-            print('Find file %s %s failed!'%(filename, existing_filename))
+            print(' Find file %s %s failed!'%(filename, existing_filename))
             self.source_stream = None
             print('''
 <html>
