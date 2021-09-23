@@ -38,20 +38,6 @@ class Command:
   def getOriginalCommand(self):
     return ' '.join([self.name] + self.parameters[1:])
 
-  # It it a compilation command?
-  def isCompileCommand(self) -> bool:
-    if ('-c' in self.parameters):
-      return True
-    return False
-
-  # Is the command a link command?
-  def isLinkCommand(self) -> bool:
-    if ('-c' not in self.parameters and 
-        '--compile' not in self.parameters and
-        ('-o' in self.parameters or '--output-file' in self.parameters)):
-      return True
-    return False
-
   def runCommandWithFlags(self):
     new_cmd = [self.name] + ADDED_FLAGS.split() + self.parameters
     try:
@@ -62,15 +48,9 @@ class Command:
 
 if __name__ == '__main__':
   cmd = Command(sys.argv)
-
-  # Link command
-  if cmd.isLinkCommand():
+  try:
+    cmd.runCommandWithFlags()
+  except Exception as e: # Fall back to original command
+    prRed(e)     
     cmd.executeOriginalCommand()
-  else:
-    # Compilation command
-    try:
-      cmd.runCommandWithFlags()
-    except Exception as e: # Fall back to original command
-      prRed(e)     
-      cmd.executeOriginalCommand()
 
