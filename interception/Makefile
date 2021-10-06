@@ -1,4 +1,3 @@
-
 __NVCC_WRAPPER__ = \"$(PWD)/nvcc_faros.py\"
 __CLANG_WRAPPER__ = \"$(PWD)/clang-faros\"
 __CLANGPP_WRAPPER__ = \"$(PWD)/clang++-faros\"

@@ -1,5 +1,3 @@
-
-
 class FAROSException(Exception):
   pass
 
@@ -11,4 +9,3 @@ class CompileException(FAROSException):
 
 class EmptyFileException(FAROSException):
   pass
-

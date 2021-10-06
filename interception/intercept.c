@@ -182,6 +182,3 @@ int execvpe(const char *file, char *const argv[], char *const envp[]) {
     else if (isGPP(file))     return old_execvpe(clangpp_faros, argv, new_envp);
     return old_execvpe(file, argv, envp); // else run original call
 }
-
-
-

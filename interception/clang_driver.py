@@ -53,4 +53,3 @@ if __name__ == '__main__':
   except Exception as e: # Fall back to original command
     prRed(e)     
     cmd.executeOriginalCommand()
-
