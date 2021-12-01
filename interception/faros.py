@@ -5,6 +5,9 @@ import sys
 import os
 from colors import *
 
+sys.path.append('../../..')
+from libs.faros import faroslib as faros
+
 INTERCEPT_LIB = os.path.dirname(os.path.abspath(__file__))+"/intercept.so"
 
 def runBuildCommand(params):
@@ -17,6 +20,9 @@ def runBuildCommand(params):
   except Exception as e:
     print(e)
     raise RuntimeError('Error when running FAROS input')
+
+  faros.merge_stats_reports('./report/', './', 'output')
+  faros.generate_remark_reports('./report/', './', ['output'])
 
 if __name__ == '__main__':
   params = sys.argv
