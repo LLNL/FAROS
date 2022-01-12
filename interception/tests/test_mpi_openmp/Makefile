@@ -8,4 +8,4 @@ all:
 	$(CC) $(LINK) -o main main.o
 
 clean:
-	rm -rf *.o main *.yaml
+	rm -rf *.o main *.yaml report

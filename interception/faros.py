@@ -3,9 +3,12 @@
 import subprocess
 import sys
 import os
+import pathlib
 from colors import *
 
-sys.path.append('../../..')
+FILE_PATH = str(pathlib.Path(__file__).parent.absolute())
+#sys.path.append('../../..')
+sys.path.append(FILE_PATH+'/../')
 from libs.faros import faroslib as faros
 
 INTERCEPT_LIB = os.path.dirname(os.path.abspath(__file__))+"/intercept.so"
