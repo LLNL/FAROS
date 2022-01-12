@@ -6,4 +6,4 @@ all:
 	$(CC) -o main $(OP) main.c
 
 clean:
-	rm -rf *.o main *.yaml
+	rm -rf *.o main *.yaml report
