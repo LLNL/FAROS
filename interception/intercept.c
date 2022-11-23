@@ -118,16 +118,8 @@ void copy_env_variables(char* const envp[], char *** new_envp) {
 
 /* Remove LD_PRELOAD library to avoid a cycle in pre-loading */
 void remove_ld_preload() {
-    char **ptr = environ;
-    while (ptr != NULL) {
-      if (*ptr == NULL)
-        break;
-      if (strstr(*ptr, "LD_PRELOAD=") != NULL) {
-        strcpy(*ptr, "LD_PRELOAD=");
-        break;
-      }
-      ptr++;
-    }
+    unsetenv("LD_PRELOAD");
+    unsetenv("DYLD_INSERT_LIBRARIES");
 }
 
 int execve(const char* filename, char* const argv[], char* const envp[]) {
