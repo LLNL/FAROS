@@ -6,14 +6,12 @@ import subprocess
 import platform
 import sys
 from colors import prGreen, prCyan, prRed
-from exceptions import CommandException, CompileException 
+from exceptions import CommandException, CompileException
 
 # --------------------------------------------------------------------------- #
 # --- Installation Paths ---------------------------------------------------- #
 # --------------------------------------------------------------------------- #
 
-# Main installation path
-FAROS_PATH      = str(pathlib.Path(__file__).parent.absolute())
 ADDED_FLAGS = '-fsave-optimization-record'
 
 # --------------------------------------------------------------------------- #
@@ -40,6 +38,7 @@ class Command:
 
   def runCommandWithFlags(self):
     new_cmd = [self.name] + ADDED_FLAGS.split() + self.parameters
+    new_cmd.insert(0, 'PATH='+os.getenv('FAROS_SAVEDPATH'))
     try:
       cmdOutput = subprocess.run(' '.join(new_cmd), shell=True, check=True)
     except Exception as e:
@@ -51,5 +50,5 @@ if __name__ == '__main__':
   try:
     cmd.runCommandWithFlags()
   except Exception as e: # Fall back to original command
-    prRed(e)     
+    prRed(e)
     cmd.executeOriginalCommand()
