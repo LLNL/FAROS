@@ -14,14 +14,11 @@
 
 import argparse
 import yaml
-from yaml import CLoader
-import argparse
 
 from libs.faros import faroslib as faros
 
 
 def main():
-    print('main')
     parser = argparse.ArgumentParser(
         description='Benchmark and analyze programs compiled with different compilation options.')
     parser.add_argument('-i', '--input', dest='input', type=str,
@@ -95,7 +92,8 @@ def main():
             build_list = config[p]['build'].keys()
             bin_output = config[p]['bin']
             metric_regex = config[p]['measure']
-            faros.run(run_cmd, run_input, build_list, bin_output, metric_regex, p, args.run, args.dry)
+            faros.run(run_cmd, run_input, build_list, bin_output,
+                      metric_regex, p, args.run, args.dry)
         if args.generate:
             report_dir = './reports/' + p
             build_dir = './repos/' + config[p]['build_dir']

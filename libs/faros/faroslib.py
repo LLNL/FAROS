@@ -12,7 +12,6 @@
 #
 
 import yaml
-from yaml import CLoader
 import subprocess
 import os
 import shutil
